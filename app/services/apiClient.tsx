@@ -67,6 +67,6 @@ export const apiClient = {
     apiRequest<{ data: Buyer }>("/api/buyers", "POST", buyer, token),
 
   // ✅ ลบ buyer
-  deleteBuyer: (id: number, token: string) =>
+  deleteBuyer: (id: string, token: string) =>
     apiRequest(`/api/buyers/${id}`, "DELETE", undefined, token),
 };

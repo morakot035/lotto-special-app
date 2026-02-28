@@ -8,14 +8,19 @@ import { apiClient } from "../../services/apiClient";
 import { getToken } from "../../services/auth";
 import { useLoading } from "../../context/LoadingContext";
 
-interface Buyers {
-  _id: number;
+interface Buyer {
+  _id: string;
   name: string;
   phone: string;
 }
 
+interface BuyersResponse {
+  success: boolean;
+  data: Buyer[];
+}
+
 export default function BuyersPage() {
-  const [buyers, setBuyers] = useState<Buyers[]>([]);
+  const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const { showLoading, hideLoading } = useLoading();
@@ -35,7 +40,9 @@ export default function BuyersPage() {
     showLoading();
     try {
       const res = await apiClient.getBuyers(token);
-      setBuyers(res.data);
+      const list = Array.isArray(res?.data) ? res.data : [];
+      console.log(list);
+      setBuyers(list);
     } catch (err) {
       console.error("โหลด buyers ล้มเหลว", err);
     } finally {
@@ -69,7 +76,7 @@ export default function BuyersPage() {
     setCurrentPage(1);
   };
 
-  const removeBuyer = async (id: number) => {
+  const removeBuyer = async (id: string) => {
     const token = getToken();
     if (!token) return;
     try {

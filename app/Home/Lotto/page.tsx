@@ -6,6 +6,7 @@ import { apiClient } from "../../services/apiClient";
 import { getToken } from "../../services/auth";
 import { useLoading } from "../../context/LoadingContext";
 import { getErrMsg, formatDateTimeTH } from "../../utils/helper";
+import { useRouter } from "next/navigation";
 /* =====================
    CONFIG
 ===================== */
@@ -228,56 +229,38 @@ function toastError(title: string) {
 /* =====================
    small UI components
 ===================== */
-function Pill({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: "green" | "blue" | "indigo";
-}) {
-  const cls =
-    tone === "green"
-      ? "bg-emerald-100 text-emerald-900"
-      : tone === "blue"
-        ? "bg-sky-100 text-sky-900"
-        : "bg-indigo-100 text-indigo-900";
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${cls}`}
-    >
-      {children}
-    </span>
-  );
-}
+/* =========================
+   UI Components (Typed)
+========================= */
 
-function CardShell({
-  title,
-  subtitle,
-  icon,
-  tone = "green",
-  children,
-  right,
-}: {
+type Tone = "green" | "blue" | "indigo";
+
+function CardShell(props: {
   title: string;
   subtitle?: string;
+  tone: Tone;
   icon: React.ReactNode;
-  tone?: "green" | "blue" | "indigo";
-  children: React.ReactNode;
   right?: React.ReactNode;
+  children: React.ReactNode;
 }) {
-  const ring =
+  const { title, subtitle, tone, icon, right, children } = props;
+
+  const toneRing =
     tone === "green"
-      ? "bg-emerald-50 text-emerald-700"
-      : tone === "blue"
-        ? "bg-sky-50 text-sky-700"
-        : "bg-indigo-50 text-indigo-700";
+      ? "ring-emerald-200"
+      : tone === "indigo"
+        ? "ring-indigo-200"
+        : "ring-sky-200";
 
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <section className="rounded-3xl border border-slate-200/70 bg-white shadow-[0_20px_50px_-35px_rgba(15,23,42,0.35)]">
+      <div className="p-5 border-b border-slate-100 flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
           <div
-            className={`h-11 w-11 rounded-2xl grid place-items-center ${ring}`}
+            className={[
+              "h-11 w-11 rounded-2xl bg-slate-50 grid place-items-center text-slate-700 ring-1",
+              toneRing,
+            ].join(" ")}
           >
             {icon}
           </div>
@@ -285,36 +268,114 @@ function CardShell({
             <div className="text-base font-extrabold text-slate-900">
               {title}
             </div>
-            {subtitle && (
-              <div className="text-sm text-slate-500">{subtitle}</div>
-            )}
+            {subtitle ? (
+              <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div>
+            ) : null}
           </div>
         </div>
-        {right}
+        <div className="shrink-0">{right}</div>
       </div>
+
       <div className="p-5">{children}</div>
-    </div>
+    </section>
   );
 }
 
-function PrimaryButton({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
+function PrimaryButton(
+  props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    children: React.ReactNode;
+  },
+) {
+  const { children, className, ...rest } = props;
   return (
     <button
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-2.5 font-extrabold transition"
+      {...rest}
+      className={[
+        "w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-extrabold text-white",
+        "shadow-[0_18px_40px_-24px_rgba(16,185,129,0.9)]",
+        "hover:bg-emerald-700 active:scale-[0.99]",
+        "focus:outline-none focus:ring-4 focus:ring-emerald-200",
+        "disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed",
+        className ?? "",
+      ].join(" ")}
     >
       {children}
     </button>
   );
+}
+
+function Pill(props: { tone: Tone; children: React.ReactNode }) {
+  const { tone, children } = props;
+
+  const map: Record<Tone, string> = {
+    green: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+    blue: "bg-sky-50 text-sky-800 ring-sky-200",
+    indigo: "bg-indigo-50 text-indigo-800 ring-indigo-200",
+  };
+
+  return (
+    <span
+      className={[
+        "inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold ring-1",
+        map[tone],
+      ].join(" ")}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* input styles */
+type FocusColor = "emerald" | "sky" | "indigo";
+
+function uiBaseFocus(color: FocusColor = "emerald") {
+  const ring =
+    color === "sky"
+      ? "focus:ring-sky-200/70 focus:border-sky-300"
+      : color === "indigo"
+        ? "focus:ring-indigo-200/70 focus:border-indigo-300"
+        : "focus:ring-emerald-200/70 focus:border-emerald-300";
+
+  return ["outline-none", "focus:ring-4", ring, "transition"].join(" ");
+}
+
+function uiInput(color: FocusColor = "emerald") {
+  return [
+    "mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3",
+    "text-slate-900 placeholder:text-slate-400 shadow-sm",
+    uiBaseFocus(color),
+  ].join(" ");
+}
+
+function uiSelect(color: FocusColor = "emerald") {
+  return [
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3",
+    "text-slate-900 shadow-sm",
+    uiBaseFocus(color),
+  ].join(" ");
+}
+
+function uiTextarea(color: FocusColor = "emerald") {
+  return [
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3",
+    "text-slate-900 placeholder:text-slate-400 shadow-sm",
+    uiBaseFocus(color),
+  ].join(" ");
+}
+
+function uiMiniInput() {
+  return [
+    "mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 bg-white",
+    "text-slate-900 placeholder:text-slate-400 shadow-sm outline-none",
+    "focus:ring-4 focus:ring-emerald-200/70 focus:border-emerald-300 transition",
+  ].join(" ");
+}
+
+function uiCheckCard() {
+  return [
+    "flex items-start gap-3 rounded-2xl border border-slate-200 p-3",
+    "hover:bg-slate-50 cursor-pointer shadow-sm transition",
+  ].join(" ");
 }
 
 /* =====================
@@ -322,6 +383,7 @@ function PrimaryButton({
 ===================== */
 export default function LottoPage() {
   const { showLoading, hideLoading } = useLoading();
+  const router = useRouter();
 
   /* buyers */
   const [buyers, setBuyers] = useState<Buyer[]>([]);
@@ -374,9 +436,9 @@ export default function LottoPage() {
   const [spBottomOn, setSpBottomOn] = useState(true);
   const [spTodOn, setSpTodOn] = useState(true);
 
-  const [spTopAmt, setSpTopAmt] = useState("100");
-  const [spBottomAmt, setSpBottomAmt] = useState("100");
-  const [spTodAmt, setSpTodAmt] = useState("100");
+  const [spTopAmt, setSpTopAmt] = useState("");
+  const [spBottomAmt, setSpBottomAmt] = useState("");
+  const [spTodAmt, setSpTodAmt] = useState("");
 
   const specialPerms = useMemo(() => {
     if (!/^\d{3}$/.test(num3)) return [];
@@ -471,9 +533,10 @@ export default function LottoPage() {
   /* =====================
      QUICK
   ===================== */
-  const [quickText, setQuickText] = useState(
-    "58 85 59 95 60 06 61 16 62 26 20*20\n23 32 33 34 43 50*0\n23 32 33 34 43 0*10\n4 5 6 500*500\n10 874 1 100*100\n874 100*200*300",
-  );
+  const [quickText, setQuickText] = useState("");
+  //   const [quickText, setQuickText] = useState(
+  //     "58 85 59 95 60 06 61 16 62 26 20*20\n23 32 33 34 43 50*0\n23 32 33 34 43 0*10\n4 5 6 500*500\n10 874 1 100*100\n874 100*200*300",
+  //   );
 
   const quickPreview = useMemo(() => {
     const { rows, errors } = parseQuickToRows(quickText);
@@ -637,13 +700,16 @@ export default function LottoPage() {
      render
   ===================== */
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Top bar (ให้ฟีลเดียวกับ Home) */}
-      <div className="border-b bg-white">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-slate-50 via-slate-50 to-emerald-50/60">
+      {/* glow background */}
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-emerald-200/35 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
+
+      {/* Top bar */}
+      <div className="relative border-b bg-white/85 backdrop-blur">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-emerald-50 grid place-items-center text-emerald-700">
-              {/* icon */}
+            <div className="h-12 w-12 rounded-2xl bg-emerald-600/10 grid place-items-center text-emerald-700 ring-1 ring-emerald-600/15">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M7 8h10M7 12h10M7 16h6"
@@ -659,478 +725,438 @@ export default function LottoPage() {
                 />
               </svg>
             </div>
+
             <div>
               <div className="text-2xl font-extrabold text-slate-900">
                 คีย์ข้อมูลหวย
               </div>
               <div className="text-sm text-slate-500">
                 เลือกผู้ซื้อ/คนเดินโพย แล้วคีย์ได้ทั้ง <b>เลขพิเศษ</b> +{" "}
-                <b>แทงเร็ว</b> (กดแล้วแตกเป็นรายการฝั่งขวา)
+                <b>แทงเร็ว</b>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* content */}
-      <div className="mx-auto max-w-6xl p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT */}
-        <div className="space-y-6">
-          <CardShell
-            title="ผู้ซื้อ / คนเดินโพย"
-            subtitle="ดึงข้อมูลจาก MongoDB (buyers)"
-            tone="green"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M20 21a8 8 0 1 0-16 0"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-              </svg>
-            }
-            right={<Pill tone="green">BUYERS</Pill>}
+          {/* Back */}
+          <button
+            type="button"
+            onClick={() => router.push("/Home")} // เปลี่ยนเป็น "/" ถ้า home อยู่หน้าแรก
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold
+                       hover:bg-slate-50 active:scale-[0.99]
+                       shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-200"
           >
-            <select
-              value={buyerId}
-              onChange={(e) => setBuyerId(e.target.value)}
-              className="w-full rounded-xl border px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-emerald-200"
-            >
-              <option value="">- กรุณาเลือก -</option>
-              {buyers.map((b) => (
-                <option key={b._id} value={b._id}>
-                  {b.name}
-                  {b.phone ? ` (${b.phone})` : ""}
-                </option>
-              ))}
-            </select>
-
-            {buyerId ? (
-              <div className="mt-3 text-sm text-slate-600">
-                กำลังคีย์ในนาม:{" "}
-                <span className="font-bold text-slate-900">{buyerName}</span>
-              </div>
-            ) : (
-              <div className="mt-3 text-sm text-rose-600 font-semibold">
-                * กรุณาเลือกผู้ซื้อก่อนบันทึก
-              </div>
-            )}
-          </CardShell>
-
-          {/* SPECIAL */}
-          <CardShell
-            title="โหมดเลขพิเศษ"
-            subtitle="เลือก 3/6 ประตู + เลือก บน/ล่าง/โต๊ด แล้วกดตกลง"
-            tone="blue"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path
-                  d="M12 3v18M3 12h18"
+                  d="M15 18l-6-6 6-6"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
-                />
-                <path
-                  d="M7 7h10v10H7V7Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
                   strokeLinejoin="round"
                 />
               </svg>
-            }
-            right={<Pill tone="blue">SPECIAL</Pill>}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-bold text-slate-700">
-                  ประเภท
-                </label>
+            </span>
+            กลับหน้า Home
+          </button>
+        </div>
+      </div>
+
+      {/* content wrap */}
+      <div className="relative mx-auto max-w-6xl px-6 py-8">
+        <div className="p-6 lg:p-7">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* LEFT */}
+            <div className="space-y-6">
+              <CardShell
+                title="ผู้ซื้อ / คนเดินโพย"
+                subtitle="ดึงข้อมูลจาก MongoDB (buyers)"
+                tone="green"
+                icon={
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20 21a8 8 0 1 0-16 0"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                }
+                right={<Pill tone="green">BUYERS</Pill>}
+              >
                 <select
-                  value={gate}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "3" || v === "6") setGate(v);
-                  }}
-                  className="mt-2 w-full rounded-xl border px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-sky-200"
+                  value={buyerId}
+                  onChange={(e) => setBuyerId(e.target.value)}
+                  className={uiSelect("emerald")}
                 >
-                  <option value="3">เลข 3 ประตู</option>
-                  <option value="6">เลข 6 ประตู</option>
+                  <option value="">- กรุณาเลือก -</option>
+                  {buyers.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name}
+                      {b.phone ? ` (${b.phone})` : ""}
+                    </option>
+                  ))}
                 </select>
-              </div>
 
-              <div>
-                <label className="text-sm font-bold text-slate-700">
-                  ตัวเลข (3 ตัว)
-                </label>
-                <input
-                  value={num3}
-                  onChange={(e) => setNum3(e.target.value.trim())}
-                  placeholder="เช่น 456"
-                  inputMode="numeric"
-                  className="mt-2 w-full rounded-xl border px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-sky-200 font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border bg-white p-4">
-              <div className="text-sm font-extrabold text-slate-800 mb-3">
-                เลือกประเภทและจำนวนเงิน
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-slate-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={spTopOn}
-                    onChange={(e) => setSpTopOn(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="font-bold">บน</div>
-                    <input
-                      value={spTopAmt}
-                      onChange={(e) => setSpTopAmt(e.target.value)}
-                      placeholder="เช่น 100"
-                      inputMode="numeric"
-                      disabled={!spTopOn}
-                      className="mt-2 w-full rounded-lg border px-3 py-2 bg-white disabled:bg-slate-100"
-                    />
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-slate-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={spBottomOn}
-                    onChange={(e) => setSpBottomOn(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="font-bold">ล่าง</div>
-                    <input
-                      value={spBottomAmt}
-                      onChange={(e) => setSpBottomAmt(e.target.value)}
-                      placeholder="เช่น 100"
-                      inputMode="numeric"
-                      disabled={!spBottomOn}
-                      className="mt-2 w-full rounded-lg border px-3 py-2 bg-white disabled:bg-slate-100"
-                    />
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-slate-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={spTodOn}
-                    onChange={(e) => setSpTodOn(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="font-bold">โต๊ด</div>
-                    <input
-                      value={spTodAmt}
-                      onChange={(e) => setSpTodAmt(e.target.value)}
-                      placeholder="เช่น 100"
-                      inputMode="numeric"
-                      disabled={!spTodOn}
-                      className="mt-2 w-full rounded-lg border px-3 py-2 bg-white disabled:bg-slate-100"
-                    />
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border bg-white px-4 py-3">
-              <div className="text-xs font-bold text-slate-600">
-                พรีวิวเลขกลับ ({gate} ประตู)
-              </div>
-              {specialPerms.length === 0 ? (
-                <div className="text-sm text-slate-400 mt-1">
-                  กรอกเลข 3 ตัวเพื่อแสดงพรีวิว
-                </div>
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {specialPerms.map((n) => (
-                    <span
-                      key={n}
-                      className="px-2 py-1 rounded-lg border text-sm font-mono bg-slate-50"
-                    >
-                      {n}
+                {buyerId ? (
+                  <div className="mt-3 text-sm text-slate-600">
+                    กำลังคีย์ในนาม:{" "}
+                    <span className="font-extrabold text-slate-900">
+                      {buyerName}
                     </span>
-                  ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-rose-600 font-extrabold">
+                    * กรุณาเลือกผู้ซื้อก่อนบันทึก
+                  </div>
+                )}
+              </CardShell>
+
+              {/* QUICK */}
+              <CardShell
+                title="โหมดแทงเร็ว"
+                subtitle="รองรับ 20*20 / 100*200*300 และตัวคูณ x หรือ *"
+                tone="indigo"
+                icon={
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M4 7h16M4 12h16M4 17h10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M19 15v6M16 18h6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                }
+                right={<Pill tone="indigo">QUICK</Pill>}
+              >
+                <textarea
+                  value={quickText}
+                  onChange={(e) => setQuickText(e.target.value)}
+                  className={
+                    uiTextarea("indigo") + " min-h-[220px] font-mono text-sm"
+                  }
+                />
+
+                <div className="mt-4">
+                  <PrimaryButton onClick={addQuick}>
+                    ตกลง (แทงเร็ว → แตกเป็นรายการด้านขวา)
+                  </PrimaryButton>
                 </div>
-              )}
+              </CardShell>
+
+              {/* SPECIAL */}
+              <CardShell
+                title="โหมดเลขพิเศษ"
+                subtitle="เลือก 3/6 ประตู + เลือก บน/ล่าง/โต๊ด แล้วกดตกลง"
+                tone="blue"
+                icon={
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 3v18M3 12h18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M7 7h10v10H7V7Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                }
+                right={<Pill tone="blue">SPECIAL</Pill>}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-extrabold text-slate-700">
+                      ประเภท
+                    </label>
+                    <select
+                      value={gate}
+                      onChange={(e) => {
+                        const v = e.target.value as Gate;
+                        if (v === "3" || v === "6") setGate(v);
+                      }}
+                      className={uiSelect("sky")}
+                    >
+                      <option value="3">เลข 3 ประตู</option>
+                      <option value="6">เลข 6 ประตู</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-extrabold text-slate-700">
+                      ตัวเลข (3 ตัว)
+                    </label>
+                    <input
+                      value={num3}
+                      onChange={(e) => setNum3(e.target.value.trim())}
+                      placeholder="เช่น 456"
+                      inputMode="numeric"
+                      className={uiInput("sky") + " font-mono"}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="text-sm font-extrabold text-slate-800 mb-3">
+                    เลือกประเภทและจำนวนเงิน
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label className={uiCheckCard()}>
+                      <input
+                        type="checkbox"
+                        checked={spTopOn}
+                        onChange={(e) => setSpTopOn(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="font-extrabold">บน</div>
+                        <input
+                          value={spTopAmt}
+                          onChange={(e) => setSpTopAmt(e.target.value)}
+                          placeholder="เช่น 100"
+                          inputMode="numeric"
+                          disabled={!spTopOn}
+                          className={uiMiniInput() + " disabled:bg-slate-100"}
+                        />
+                      </div>
+                    </label>
+
+                    <label className={uiCheckCard()}>
+                      <input
+                        type="checkbox"
+                        checked={spBottomOn}
+                        onChange={(e) => setSpBottomOn(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="font-extrabold">ล่าง</div>
+                        <input
+                          value={spBottomAmt}
+                          onChange={(e) => setSpBottomAmt(e.target.value)}
+                          placeholder="เช่น 100"
+                          inputMode="numeric"
+                          disabled={!spBottomOn}
+                          className={uiMiniInput() + " disabled:bg-slate-100"}
+                        />
+                      </div>
+                    </label>
+
+                    <label className={uiCheckCard()}>
+                      <input
+                        type="checkbox"
+                        checked={spTodOn}
+                        onChange={(e) => setSpTodOn(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="font-extrabold">โต๊ด</div>
+                        <input
+                          value={spTodAmt}
+                          onChange={(e) => setSpTodAmt(e.target.value)}
+                          placeholder="เช่น 100"
+                          inputMode="numeric"
+                          disabled={!spTodOn}
+                          className={uiMiniInput() + " disabled:bg-slate-100"}
+                        />
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                  <div className="text-xs font-extrabold text-slate-600">
+                    พรีวิวเลขกลับ ({gate} ประตู)
+                  </div>
+
+                  {specialPerms.length === 0 ? (
+                    <div className="text-sm text-slate-400 mt-1">
+                      กรอกเลข 3 ตัวเพื่อแสดงพรีวิว
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {specialPerms.map((n) => (
+                        <span
+                          key={n}
+                          className="px-2 py-1 rounded-xl border border-slate-200 text-sm font-mono bg-slate-50"
+                        >
+                          {n}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <PrimaryButton onClick={addSpecial}>
+                    ตกลง (เลขพิเศษ → แตกเป็นรายการด้านขวา)
+                  </PrimaryButton>
+                </div>
+              </CardShell>
             </div>
 
-            {/* <div className="mt-4 rounded-2xl border bg-white px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold text-slate-600">
-                  พรีวิวรายการที่จะเข้าตาราง (เลขพิเศษ)
-                </div>
-                <div className="text-xs text-slate-500">
-                  รวม:{" "}
-                  <span className="font-extrabold">
-                    {cn(
-                      specialPreviewRows.rows.reduce((s, r) => s + r.amount, 0),
+            {/* RIGHT */}
+            <CardShell
+              title="รายการล่าสุด"
+              subtitle="แสดงผลจากเลขพิเศษ + แทงเร็ว"
+              tone="blue"
+              icon={
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M9 11l2 2 4-4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 22A10 10 0 1 0 2 12a10 10 0 0 0 10 10Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+              }
+              right={<Pill tone="blue">SUMMARY</Pill>}
+            >
+              <div className="overflow-auto rounded-3xl border border-slate-200 bg-white">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-slate-700">
+                    <tr>
+                      <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
+                        ประเภทหวย
+                      </th>
+                      <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
+                        ตัวเลข
+                      </th>
+                      <th className="p-3 border-b text-right whitespace-nowrap font-extrabold">
+                        จำนวนเงิน
+                      </th>
+                      <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
+                        วัน/เวลา
+                      </th>
+                      <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
+                        ผู้ซื้อ
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {items.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-10 text-center text-slate-500"
+                        >
+                          ยังไม่มีรายการ
+                        </td>
+                      </tr>
+                    ) : (
+                      items.map((i) => (
+                        <tr
+                          key={i.id}
+                          className="hover:bg-emerald-50/40 transition-colors"
+                        >
+                          <td className="p-3 border-b">
+                            <span
+                              className={[
+                                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold ring-1",
+                                i.type === "special"
+                                  ? "bg-sky-100 text-sky-900 ring-sky-200"
+                                  : "bg-indigo-100 text-indigo-900 ring-indigo-200",
+                              ].join(" ")}
+                            >
+                              {i.label}
+                            </span>
+                          </td>
+                          <td className="p-3 border-b font-mono">
+                            {i.numbers.join(" ")}
+                          </td>
+                          <td className="p-3 border-b text-right font-extrabold">
+                            {cn(i.amount)}
+                          </td>
+                          <td className="p-3 border-b text-slate-600 whitespace-nowrap">
+                            {formatDateTimeTH(i.createdAt)}
+                          </td>
+                          <td className="p-3 border-b">{i.buyerName ?? "-"}</td>
+                        </tr>
+                      ))
                     )}
-                  </span>
-                </div>
+                  </tbody>
+                </table>
               </div>
 
-              {specialPreviewRows.errors.length > 0 ? (
-                <div className="mt-2 text-sm text-rose-600 space-y-1">
-                  {specialPreviewRows.errors.map((e, idx) => (
-                    <div key={idx}>• {e}</div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  {specialPreviewRows.rows.slice(0, 10).map((r, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between rounded-lg border px-3 py-2 bg-slate-50"
-                    >
-                      <div className="text-slate-700">
-                        <span className="font-bold">{r.betType}</span>{" "}
-                        <span className="font-mono">{r.number}</span>
-                      </div>
-                      <div className="font-extrabold text-slate-800">
-                        {cn(r.amount)}
-                      </div>
-                    </div>
-                  ))}
-                  {specialPreviewRows.rows.length > 10 && (
-                    <div className="text-xs text-slate-500">
-                      … และอีก {specialPreviewRows.rows.length - 10} รายการ
-                    </div>
-                  )}
-                </div>
-              )}
-            </div> */}
-
-            <div className="mt-4">
-              <PrimaryButton onClick={addSpecial}>
-                ตกลง (เลขพิเศษ → แตกเป็นรายการด้านขวา)
-              </PrimaryButton>
-            </div>
-          </CardShell>
-
-          {/* QUICK */}
-          <CardShell
-            title="โหมดแทงเร็ว"
-            subtitle="รองรับ 20*20 / 100*200*300 และตัวคูณ x หรือ *"
-            tone="indigo"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M4 7h16M4 12h16M4 17h10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M19 15v6M16 18h6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            }
-            right={<Pill tone="indigo">QUICK</Pill>}
-          >
-            <textarea
-              value={quickText}
-              onChange={(e) => setQuickText(e.target.value)}
-              className="w-full min-h-[220px] rounded-xl border px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-indigo-200 font-mono text-sm"
-            />
-
-            {/* <div className="mt-4 rounded-2xl border bg-white px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold text-slate-600">
-                  พรีวิวการแตกประเภท (แทงเร็ว)
-                </div>
-                <div className="text-xs text-slate-500">
-                  รวม:{" "}
-                  <span className="font-extrabold">
-                    {cn(quickPreview.okTotal)}
-                  </span>
-                </div>
+              <div className="mt-4 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3 text-rose-700 text-xs font-extrabold text-center">
+                *** 3 ตัวโต๊ด จะเก็บเป็นเลขเดียว (เช่น 321/231/132 → 123) ***
               </div>
 
-              {quickPreview.errors.length > 0 ? (
-                <div className="mt-2 text-sm text-rose-600 space-y-1">
-                  {quickPreview.errors.map((e, idx) => (
-                    <div key={idx}>• {e}</div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  {quickPreview.rows.slice(0, 12).map((r, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between rounded-lg border px-3 py-2 bg-slate-50"
-                    >
-                      <div className="text-slate-700">
-                        <span className="font-bold">{r.betType}</span>{" "}
-                        <span className="font-mono">{r.number}</span>
-                      </div>
-                      <div className="font-extrabold text-slate-800">
-                        {cn(r.amount)}
-                      </div>
-                    </div>
-                  ))}
-                  {quickPreview.rows.length > 12 && (
-                    <div className="text-xs text-slate-500">
-                      … และอีก {quickPreview.rows.length - 12} รายการ
-                    </div>
-                  )}
-                </div>
-              )}
-            </div> */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setItems([]);
+                    toastSuccess("ล้างรายการแล้ว");
+                  }}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold
+                             hover:bg-slate-50 active:scale-[0.99] shadow-sm
+                             focus:outline-none focus:ring-4 focus:ring-slate-200"
+                >
+                  ลบรายการทั้งหมด
+                </button>
 
-            <div className="mt-4">
-              <PrimaryButton onClick={addQuick}>
-                ตกลง (แทงเร็ว → แตกเป็นรายการด้านขวา)
-              </PrimaryButton>
-            </div>
-          </CardShell>
+                <button
+                  type="button"
+                  onClick={confirmOrder}
+                  disabled={!canConfirm}
+                  className="rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed
+                             px-4 py-3 text-sm font-extrabold text-white
+                             shadow-[0_18px_40px_-24px_rgba(16,185,129,0.9)]
+                             focus:outline-none focus:ring-4 focus:ring-emerald-200 active:scale-[0.99]"
+                >
+                  ยืนยันการสั่งซื้อ (บันทึกลงระบบ)
+                </button>
+              </div>
+
+              <div className="mt-5 flex items-end justify-between gap-4">
+                <div className="text-sm text-slate-500">
+                  ผู้ซื้อ:{" "}
+                  <span className="font-extrabold text-slate-900">
+                    {buyerName ?? "-"}
+                  </span>
+                  <div className="text-xs text-slate-400 mt-1">
+                    * กด “ยืนยันการสั่งซื้อ” เพื่อยิง API และบันทึกเข้า DB
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-sm text-slate-500">ยอดรวมทั้งหมด</div>
+                  <div className="text-3xl font-extrabold text-slate-900">
+                    {cn(total)}{" "}
+                    <span className="text-base font-bold text-slate-500">
+                      บาท
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardShell>
+          </div>
         </div>
 
-        {/* RIGHT */}
-        <CardShell
-          title="รายการล่าสุด"
-          subtitle="แสดงผลจากเลขพิเศษ + แทงเร็ว"
-          tone="blue"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M9 11l2 2 4-4"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M12 22A10 10 0 1 0 2 12a10 10 0 0 0 10 10Z"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-            </svg>
-          }
-          right={<Pill tone="blue">SUMMARY</Pill>}
-        >
-          <div className="overflow-auto rounded-2xl border bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-700">
-                <tr>
-                  <th className="p-2 border-b text-left whitespace-nowrap">
-                    ประเภทหวย
-                  </th>
-                  <th className="p-2 border-b text-left whitespace-nowrap">
-                    ตัวเลข
-                  </th>
-                  <th className="p-2 border-b text-right whitespace-nowrap">
-                    จำนวนเงิน
-                  </th>
-                  <th className="p-2 border-b text-left whitespace-nowrap">
-                    วัน/เวลา
-                  </th>
-                  <th className="p-2 border-b text-left whitespace-nowrap">
-                    ผู้ซื้อ
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                      ยังไม่มีรายการ
-                    </td>
-                  </tr>
-                ) : (
-                  items.map((i) => (
-                    <tr key={i.id} className="hover:bg-slate-50">
-                      <td className="p-2 border-b">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
-                            i.type === "special"
-                              ? "bg-sky-100 text-sky-900"
-                              : "bg-indigo-100 text-indigo-900"
-                          }`}
-                        >
-                          {i.label}
-                        </span>
-                      </td>
-                      <td className="p-2 border-b font-mono">
-                        {i.numbers.join(" ")}
-                      </td>
-                      <td className="p-2 border-b text-right font-extrabold">
-                        {cn(i.amount)}
-                      </td>
-                      <td className="p-2 border-b text-slate-600 whitespace-nowrap">
-                        {formatDateTimeTH(i.createdAt)}
-                      </td>
-                      <td className="p-2 border-b">{i.buyerName ?? "-"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-3 text-rose-600 text-xs font-extrabold text-center">
-            *** 3 ตัวโต๊ด จะเก็บเป็นเลขเดียว (เช่น 321/231/132 → 123) ***
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setItems([]);
-                toastSuccess("ล้างรายการแล้ว");
-              }}
-              className="rounded-xl border px-4 py-2.5 text-sm font-extrabold hover:bg-slate-50"
-            >
-              ลบรายการทั้งหมด
-            </button>
-
-            <button
-              type="button"
-              onClick={confirmOrder}
-              disabled={!canConfirm}
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed px-4 py-2.5 text-sm font-extrabold text-white"
-            >
-              ยืนยันการสั่งซื้อ (บันทึกลงระบบ)
-            </button>
-          </div>
-
-          <div className="mt-4 flex items-end justify-between">
-            <div className="text-sm text-slate-500">
-              ผู้ซื้อ:{" "}
-              <span className="font-extrabold text-slate-900">
-                {buyerName ?? "-"}
-              </span>
-              <div className="text-xs text-slate-400 mt-1">
-                * กด “ยืนยันการสั่งซื้อ” เพื่อยิง API และบันทึกเข้า DB
-              </div>
-            </div>
-
-            <div className="text-right">
-              <div className="text-sm text-slate-500">ยอดรวมทั้งหมด</div>
-              <div className="text-3xl font-extrabold text-slate-900">
-                {cn(total)}{" "}
-                <span className="text-base font-bold text-slate-500">บาท</span>
-              </div>
-            </div>
-          </div>
-        </CardShell>
+        <div className="mt-8 text-center text-xs text-slate-400">
+          © 2026 Lotto App. All rights reserved.
+        </div>
       </div>
     </div>
   );
