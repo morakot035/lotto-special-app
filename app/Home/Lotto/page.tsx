@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { apiClient } from "../../services/apiClient";
@@ -7,23 +8,48 @@ import { getToken } from "../../services/auth";
 import { useLoading } from "../../context/LoadingContext";
 import { getErrMsg, formatDateTimeTH } from "../../utils/helper";
 import { useRouter } from "next/navigation";
-/* =====================
-   CONFIG
-===================== */
-const ORDER_API_ENDPOINT = "/api/orders"; // <- ถ้า backend คุณใช้เส้นอื่น เปลี่ยนตรงนี้
 
 /* =====================
-   types
+   CONFIG / TYPES
 ===================== */
+type RuleKind = "LOCK" | "BLOCK"; // LOCK = เลขอั้น 50%, BLOCK = ไม่รับซื้อ
+
+type Rule = {
+  _id: string;
+  number: string;
+  kind: RuleKind;
+  digits: 2 | 3;
+  active: boolean;
+  createdAt?: string;
+};
+
+type OrderItemPayload = {
+  type: "special" | "quick";
+  bet_type: string;
+  number: string;
+
+  // ✅ amount = ยอด "สุทธิ" (ตามเลขอั้น 50%)
+  amount: number;
+
+  // ✅ ส่งเพิ่มได้ (backend จะ ignore ถ้าไม่รองรับ)
+  amount_gross?: number;
+  is_locked?: boolean;
+  lock_rate?: number;
+
+  created_at: string;
+};
+
+type CreateOrderPayload = {
+  buyer_id: string;
+  buyer_name?: string;
+  total_amount: number; // ✅ ยอดสุทธิรวม
+  items: OrderItemPayload[];
+};
+
 interface Buyer {
   _id: string;
   name: string;
   phone: string;
-}
-
-interface BuyersResponse {
-  success: boolean;
-  data: Buyer[];
 }
 
 type Gate = "3" | "6";
@@ -33,7 +59,15 @@ type Item = {
   type: "special" | "quick";
   label: string; // ประเภทหวย เช่น สามตัวบน
   numbers: string[]; // ส่วนใหญ่ 1 ตัว/แถว
-  amount: number;
+
+  // ✅ แยกยอดเต็ม/สุทธิ
+  amountGross: number;
+  amountNet: number;
+
+  // ✅ เลขอั้น
+  isLocked: boolean;
+  lockRate?: number; // 0.5
+
   buyerId?: string;
   buyerName?: string;
   createdAt: string; // ISO
@@ -59,9 +93,6 @@ const uid = () => Math.random().toString(36).slice(2);
 
 function cn(n: number) {
   return n.toLocaleString();
-}
-function formatDateTime(iso: string) {
-  return iso.replace("T", " ").slice(0, 19);
 }
 
 function canonicalTod3(n: string) {
@@ -226,13 +257,9 @@ function toastError(title: string) {
   });
 }
 
-/* =====================
-   small UI components
-===================== */
 /* =========================
    UI Components (Typed)
 ========================= */
-
 type Tone = "green" | "blue" | "indigo";
 
 function CardShell(props: {
@@ -379,7 +406,7 @@ function uiCheckCard() {
 }
 
 /* =====================
-   page
+   PAGE
 ===================== */
 export default function LottoPage() {
   const { showLoading, hideLoading } = useLoading();
@@ -394,8 +421,172 @@ export default function LottoPage() {
     [buyers, buyerId],
   );
 
+  /* =====================
+     RULES (LOCK/BLOCK)
+  ===================== */
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [block2, setBlock2] = useState<Set<string>>(new Set());
+  const [block3, setBlock3] = useState<Set<string>>(new Set());
+  const [lock2, setLock2] = useState<Set<string>>(new Set());
+  const [lock3, setLock3] = useState<Set<string>>(new Set());
+
+  function normalizeDigits(n: number): 2 | 3 | null {
+    if (n === 2) return 2;
+    if (n === 3) return 3;
+    return null;
+  }
+
+  function isRuleArray(x: unknown): x is Rule[] {
+    if (!Array.isArray(x)) return false;
+    return x.every((r) => {
+      if (!r || typeof r !== "object") return false;
+      const o = r as Record<string, unknown>;
+      const digits = normalizeDigits(Number(o.digits));
+      return (
+        typeof o._id === "string" &&
+        typeof o.number === "string" &&
+        (o.kind === "LOCK" || o.kind === "BLOCK") &&
+        (digits === 2 || digits === 3) &&
+        typeof o.active === "boolean"
+      );
+    });
+  }
+
+  async function loadRules() {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      // ✅ ต้องมี method นี้ใน apiClient: getRules(token) -> { data: Rule[] }
+      // ถ้ายังไม่มี ให้คุณเพิ่มใน apiClient แล้วใช้ endpoint ของคุณ เช่น "/api/rules?active=true"
+      const res = await apiClient.getRules(token);
+      const listUnknown: unknown = (res as { data?: unknown })?.data;
+
+      const list = isRuleArray(listUnknown) ? listUnknown : [];
+      setRules(list);
+
+      const b2 = new Set<string>();
+      const b3 = new Set<string>();
+      const l2 = new Set<string>();
+      const l3 = new Set<string>();
+
+      for (const r of list) {
+        if (!r.active) continue;
+        if (r.kind === "BLOCK") {
+          if (r.digits === 2) b2.add(r.number);
+          if (r.digits === 3) b3.add(r.number);
+        }
+        if (r.kind === "LOCK") {
+          if (r.digits === 2) l2.add(r.number);
+          if (r.digits === 3) l3.add(r.number);
+        }
+      }
+
+      setBlock2(b2);
+      setBlock3(b3);
+      setLock2(l2);
+      setLock3(l3);
+    } catch {
+      // ไม่ต้อง toast แรง ๆ ก็ได้ เดี๋ยวรบกวน
+      toastError("โหลดเลขอั้น/เลขไม่รับซื้อไม่สำเร็จ");
+    }
+  }
+
+  function checkRule(number: string): {
+    blocked: boolean;
+    locked: boolean;
+    lockRate: number;
+  } {
+    const is2 = number.length === 2;
+    const is3 = number.length === 3;
+
+    const blocked = (is2 && block2.has(number)) || (is3 && block3.has(number));
+    const locked = (is2 && lock2.has(number)) || (is3 && lock3.has(number));
+
+    return { blocked, locked, lockRate: locked ? 0.5 : 1 };
+  }
+
+  async function applyRules(
+    draft: Array<Omit<Item, "amountNet" | "isLocked" | "lockRate">>,
+  ): Promise<{ ok: true; rows: Item[] } | { ok: false; rows: [] }> {
+    const blocked = draft.filter((d) => checkRule(d.numbers[0] ?? "").blocked);
+
+    if (blocked.length > 0) {
+      const nums = Array.from(
+        new Set(blocked.map((b) => b.numbers[0] ?? "")),
+      ).filter(Boolean);
+
+      await Swal.fire({
+        icon: "error",
+        title: "มีเลขไม่รับซื้อ (BLOCK)",
+        html: `
+          <div style="text-align:left">
+            <div>ระบบไม่อนุญาตให้บันทึกเลขต่อไปนี้:</div>
+            <div style="margin-top:10px; line-height: 2">
+              ${nums
+                .slice(0, 30)
+                .map(
+                  (n) =>
+                    `<span style="display:inline-block;margin:2px 6px;padding:4px 10px;border:1px solid #fecaca;border-radius:999px;background:#fff1f2;color:#9f1239;font-weight:900">${n}</span>`,
+                )
+                .join("")}
+              ${nums.length > 30 ? `<div style="margin-top:8px;color:#64748b">…และอีก ${nums.length - 30} เลข</div>` : ""}
+            </div>
+          </div>
+        `,
+        confirmButtonText: "รับทราบ",
+      });
+
+      return { ok: false, rows: [] };
+    }
+
+    const rows: Item[] = draft.map((d) => {
+      const n = d.numbers[0] ?? "";
+      const rule = checkRule(n);
+      const net = Math.round(d.amountGross * rule.lockRate);
+      return {
+        ...d,
+        isLocked: rule.locked,
+        lockRate: rule.locked ? rule.lockRate : undefined,
+        amountNet: net,
+      };
+    });
+
+    const lockedNums = Array.from(
+      new Set(rows.filter((r) => r.isLocked).map((r) => r.numbers[0] ?? "")),
+    ).filter(Boolean);
+
+    if (lockedNums.length > 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "พบเลขอั้น (LOCK 50%)",
+        html: `
+          <div style="text-align:left">
+            <div>ระบบจะคิดยอดสุทธิ 50% สำหรับเลขอั้น:</div>
+            <div style="margin-top:10px; line-height: 2">
+              ${lockedNums
+                .slice(0, 30)
+                .map(
+                  (n) =>
+                    `<span style="display:inline-block;margin:2px 6px;padding:4px 10px;border:1px solid #fde68a;border-radius:999px;background:#fffbeb;color:#92400e;font-weight:900">${n}</span>`,
+                )
+                .join("")}
+              ${lockedNums.length > 30 ? `<div style="margin-top:8px;color:#64748b">…และอีก ${lockedNums.length - 30} เลข</div>` : ""}
+            </div>
+          </div>
+        `,
+        confirmButtonText: "ตกลง",
+      });
+    }
+
+    return { ok: true, rows };
+  }
+
+  /* =====================
+     LOAD BUYERS + RULES
+  ===================== */
   useEffect(() => {
-    const fetchBuyers = async () => {
+    const fetchInit = async () => {
       const token = getToken();
       if (!token) {
         toastError("ยังไม่ได้เข้าสู่ระบบ (ไม่มี token)");
@@ -405,26 +596,47 @@ export default function LottoPage() {
       showLoading();
       try {
         const res = await apiClient.getBuyers(token);
-
-        const list = Array.isArray(res?.data) ? res.data : [];
-
+        const listUnknown: unknown = (res as { data?: unknown })?.data;
+        const list = Array.isArray(listUnknown) ? (listUnknown as Buyer[]) : [];
         setBuyers(list);
-        toastSuccess("โหลดรายชื่อผู้ซื้อเรียบร้อย");
-      } catch (err) {
-        console.error("โหลด buyers ล้มเหลว", err);
-        toastError("โหลดรายชื่อผู้ซื้อล้มเหลว");
+
+        await loadRules();
+
+        toastSuccess("โหลดข้อมูลเรียบร้อย");
+      } catch (err: unknown) {
+        console.error("โหลดข้อมูลล้มเหลว", err);
+        toastError("โหลดข้อมูลล้มเหลว");
       } finally {
         hideLoading();
       }
     };
 
-    fetchBuyers();
+    fetchInit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* shared items (ตารางขวา) */
+  /* =====================
+     items (ตารางขวา)
+  ===================== */
   const [items, setItems] = useState<Item[]>([]);
-  const total = useMemo(() => items.reduce((s, i) => s + i.amount, 0), [items]);
+
+  const totalGross = useMemo(
+    () => items.reduce((s, i) => s + i.amountGross, 0),
+    [items],
+  );
+  const totalNet = useMemo(
+    () => items.reduce((s, i) => s + i.amountNet, 0),
+    [items],
+  );
+
+  const lockedSummary = useMemo(() => {
+    const locked = items.filter((r) => r.isLocked);
+    return {
+      count: locked.length,
+      gross: locked.reduce((s, r) => s + r.amountGross, 0),
+      net: locked.reduce((s, r) => s + r.amountNet, 0),
+    };
+  }, [items]);
 
   /* =====================
      SPECIAL
@@ -491,41 +703,38 @@ export default function LottoPage() {
     num3,
   ]);
 
-  function addSpecial() {
-    if (!buyerId) {
-      toastError("กรุณาเลือกผู้ซื้อ/คนเดินโพย");
-      return;
-    }
-    if (!/^\d{3}$/.test(num3)) {
-      toastError("เลขต้องเป็น 3 ตัว");
-      return;
-    }
+  async function addSpecial() {
+    if (!buyerId) return toastError("กรุณาเลือกผู้ซื้อ/คนเดินโพย");
+    if (!/^\d{3}$/.test(num3)) return toastError("เลขต้องเป็น 3 ตัว");
     if (specialPreviewRows.errors.length) {
-      Swal.fire({
+      await Swal.fire({
         icon: "warning",
         title: "กรอกข้อมูลไม่ครบ",
         html: specialPreviewRows.errors.map((e) => `• ${e}`).join("<br/>"),
       });
       return;
     }
-    if (specialPreviewRows.rows.length === 0) {
-      toastError("ไม่มีรายการที่บันทึกได้");
-      return;
-    }
+    if (specialPreviewRows.rows.length === 0)
+      return toastError("ไม่มีรายการที่บันทึกได้");
 
     const createdAt = new Date().toISOString();
-    const mapped: Item[] = specialPreviewRows.rows.map((r) => ({
-      id: uid(),
-      type: "special",
-      label: r.betType,
-      numbers: [r.number],
-      amount: r.amount,
-      buyerId,
-      buyerName,
-      createdAt,
-    }));
 
-    setItems((prev) => [...mapped.reverse(), ...prev]);
+    const draft: Array<Omit<Item, "amountNet" | "isLocked" | "lockRate">> =
+      specialPreviewRows.rows.map((r) => ({
+        id: uid(),
+        type: "special",
+        label: r.betType,
+        numbers: [r.number],
+        amountGross: r.amount,
+        buyerId,
+        buyerName,
+        createdAt,
+      }));
+
+    const checked = await applyRules(draft);
+    if (!checked.ok) return;
+
+    setItems((prev) => [...checked.rows.reverse(), ...prev]);
     setNum3("");
     toastSuccess("เพิ่มเลขพิเศษลงรายการแล้ว");
   }
@@ -534,9 +743,6 @@ export default function LottoPage() {
      QUICK
   ===================== */
   const [quickText, setQuickText] = useState("");
-  //   const [quickText, setQuickText] = useState(
-  //     "58 85 59 95 60 06 61 16 62 26 20*20\n23 32 33 34 43 50*0\n23 32 33 34 43 0*10\n4 5 6 500*500\n10 874 1 100*100\n874 100*200*300",
-  //   );
 
   const quickPreview = useMemo(() => {
     const { rows, errors } = parseQuickToRows(quickText);
@@ -544,56 +750,49 @@ export default function LottoPage() {
     return { rows, errors, okTotal };
   }, [quickText]);
 
-  function addQuick() {
-    if (!buyerId) {
-      toastError("กรุณาเลือกผู้ซื้อ/คนเดินโพย");
-      return;
-    }
+  async function addQuick() {
+    if (!buyerId) return toastError("กรุณาเลือกผู้ซื้อ/คนเดินโพย");
 
     const { rows, errors } = parseQuickToRows(quickText);
     if (errors.length) {
-      Swal.fire({
+      await Swal.fire({
         icon: "warning",
         title: "รูปแบบแทงเร็วไม่ถูกต้อง",
         html: errors.map((e) => `• ${e}`).join("<br/>"),
       });
       return;
     }
-    if (rows.length === 0) {
-      toastError("ไม่มีรายการที่บันทึกได้");
-      return;
-    }
+    if (rows.length === 0) return toastError("ไม่มีรายการที่บันทึกได้");
 
     const createdAt = new Date().toISOString();
-    const mapped: Item[] = rows.map((r) => ({
-      id: uid(),
-      type: "quick",
-      label: r.betType,
-      numbers: [r.number],
-      amount: r.amount,
-      buyerId,
-      buyerName,
-      createdAt,
-    }));
 
-    setItems((prev) => [...mapped.reverse(), ...prev]);
+    const draft: Array<Omit<Item, "amountNet" | "isLocked" | "lockRate">> =
+      rows.map((r) => ({
+        id: uid(),
+        type: "quick",
+        label: r.betType,
+        numbers: [r.number],
+        amountGross: r.amount,
+        buyerId,
+        buyerName,
+        createdAt,
+      }));
+
+    const checked = await applyRules(draft);
+    if (!checked.ok) return;
+
+    setItems((prev) => [...checked.rows.reverse(), ...prev]);
     toastSuccess("เพิ่มแทงเร็วลงรายการแล้ว");
   }
 
   /* =====================
      CONFIRM ORDER (ยิง API)
   ===================== */
-  const canConfirm = Boolean(buyerId) && items.length > 0 && total > 0;
+  const canConfirm = Boolean(buyerId) && items.length > 0 && totalNet > 0;
 
   async function confirmOrder() {
-    if (!buyerId) {
-      toastError("กรุณาเลือกผู้ซื้อก่อนยืนยัน");
-      return;
-    }
-    if (items.length === 0) {
-      toastError("ยังไม่มีรายการให้ยืนยัน");
-      return;
-    }
+    if (!buyerId) return toastError("กรุณาเลือกผู้ซื้อก่อนยืนยัน");
+    if (items.length === 0) return toastError("ยังไม่มีรายการให้ยืนยัน");
 
     const result = await Swal.fire({
       icon: "question",
@@ -602,7 +801,8 @@ export default function LottoPage() {
         <div style="text-align:left">
           <div><b>ผู้ซื้อ:</b> ${buyerName ?? "-"}</div>
           <div><b>จำนวนรายการ:</b> ${items.length.toLocaleString()} รายการ</div>
-          <div><b>ยอดรวม:</b> ${cn(total)} บาท</div>
+          <div><b>ยอดสุทธิ:</b> ${cn(totalNet)} บาท</div>
+          <div style="color:#64748b;font-size:12px;margin-top:6px">ยอดเต็ม: ${cn(totalGross)} บาท</div>
         </div>
       `,
       showCancelButton: true,
@@ -611,93 +811,72 @@ export default function LottoPage() {
       reverseButtons: true,
     });
 
-    if (!result.isConfirmed) {
-      toastError("ยกเลิกการยืนยันแล้ว");
-      return;
-    }
+    if (!result.isConfirmed) return toastError("ยกเลิกการยืนยันแล้ว");
 
     const token = getToken();
-    if (!token) {
-      toastError("ยังไม่ได้เข้าสู่ระบบ (ไม่มี token)");
-      return;
-    }
+    if (!token) return toastError("ยังไม่ได้เข้าสู่ระบบ (ไม่มี token)");
 
-    // payload (เตรียมส่งข้อมูล)
-    const payload = {
-      buyer_id: buyerId,
-      buyer_name: buyerName,
-      total_amount: total,
-      items: items.map((i) => ({
+    const payloadItems: OrderItemPayload[] = items.flatMap((i) =>
+      i.numbers.map((n) => ({
         type: i.type,
         bet_type: i.label,
-        number: i.numbers[0],
-        amount: i.amount,
-        created_at: i.createdAt,
+        number: n,
+
+        // ✅ บันทึกยอดสุทธิ (ตามเลขอั้น)
+        amount: i.amountNet,
+
+        // ✅ ส่งเพิ่ม (optional)
+        amount_gross: i.amountGross,
+        is_locked: i.isLocked,
+        lock_rate: i.lockRate,
+
+        created_at: formatDateTimeTH(i.createdAt),
       })),
+    );
+
+    const payloadTotal = payloadItems.reduce((s, it) => s + it.amount, 0);
+
+    const payload: CreateOrderPayload = {
+      buyer_id: buyerId,
+      buyer_name: buyerName ?? undefined,
+      total_amount: payloadTotal,
+      items: payloadItems,
     };
 
+    Swal.fire({
+      title: "กำลังบันทึกคำสั่งซื้อ...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
     try {
-      //   await Swal.fire({
-      //     title: "กำลังบันทึกคำสั่งซื้อ...",
-      //     allowOutsideClick: false,
-      //     didOpen: () => Swal.showLoading(),
-      //   });
-      console.log(payload);
-      const res = await fetch(ORDER_API_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      // ✅ data คือ JSON แล้ว (ไม่ต้อง res.json())
+      await apiClient.addOrders(token, payload);
 
-      let data: unknown;
-
-      try {
-        data = await res.json();
-      } catch {
-        data = null;
-      }
-
-      const d = data as {
-        ok?: boolean;
-        success?: boolean;
-        message?: string;
-        error?: { message?: string };
-      } | null;
-
-      if (!res.ok || d?.ok === false || d?.success === false) {
-        const msg =
-          d?.message ||
-          d?.error?.message ||
-          `บันทึกล้มเหลว (status ${res.status})`;
-
-        throw new Error(msg);
-      }
+      Swal.close();
 
       await Swal.fire({
         icon: "success",
         title: "บันทึกคำสั่งซื้อสำเร็จ",
-        html: `<div>ยอดรวม <b>${cn(total)}</b> บาท</div>`,
+        html: `<div>ยอดสุทธิ <b>${cn(payloadTotal)}</b> บาท</div>`,
         confirmButtonText: "ตกลง",
       });
 
-      // หลังสำเร็จ: ล้างตาราง
       setItems([]);
       toastSuccess("ล้างรายการเพื่อเริ่มคีย์ใหม่แล้ว");
     } catch (err: unknown) {
+      Swal.close();
       const msg = getErrMsg(err);
-      Swal.fire({
+      await Swal.fire({
         icon: "error",
         title: "บันทึกคำสั่งซื้อไม่สำเร็จ",
-        text: msg ?? "เกิดข้อผิดพลาด",
+        text: msg || "เกิดข้อผิดพลาด",
       });
     }
   }
 
   /* =====================
-     render
+     RENDER
   ===================== */
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-slate-50 via-slate-50 to-emerald-50/60">
@@ -734,13 +913,25 @@ export default function LottoPage() {
                 เลือกผู้ซื้อ/คนเดินโพย แล้วคีย์ได้ทั้ง <b>เลขพิเศษ</b> +{" "}
                 <b>แทงเร็ว</b>
               </div>
+              <div className="text-xs text-slate-400 mt-1">
+                (ล็อค/บล็อค) ใช้งานอยู่:{" "}
+                <span className="font-extrabold text-amber-700">
+                  {rules.filter((r) => r.active && r.kind === "LOCK").length}{" "}
+                  LOCK
+                </span>{" "}
+                •{" "}
+                <span className="font-extrabold text-rose-700">
+                  {rules.filter((r) => r.active && r.kind === "BLOCK").length}{" "}
+                  BLOCK
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Back */}
           <button
             type="button"
-            onClick={() => router.push("/Home")} // เปลี่ยนเป็น "/" ถ้า home อยู่หน้าแรก
+            onClick={() => router.push("/Home")}
             className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold
                        hover:bg-slate-50 active:scale-[0.99]
                        shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-200"
@@ -846,6 +1037,14 @@ export default function LottoPage() {
                     uiTextarea("indigo") + " min-h-[220px] font-mono text-sm"
                   }
                 />
+
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
+                  พรีวิวรวม (ยอดเต็ม):{" "}
+                  <span className="font-extrabold text-slate-900">
+                    {cn(quickPreview.okTotal)}
+                  </span>{" "}
+                  บาท
+                </div>
 
                 <div className="mt-4">
                   <PrimaryButton onClick={addQuick}>
@@ -1011,7 +1210,7 @@ export default function LottoPage() {
             {/* RIGHT */}
             <CardShell
               title="รายการล่าสุด"
-              subtitle="แสดงผลจากเลขพิเศษ + แทงเร็ว"
+              subtitle="แสดงผลจากเลขพิเศษ + แทงเร็ว (รองรับเลขอั้น/เลขไม่รับซื้อ)"
               tone="blue"
               icon={
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -1067,29 +1266,51 @@ export default function LottoPage() {
                       items.map((i) => (
                         <tr
                           key={i.id}
-                          className="hover:bg-emerald-50/40 transition-colors"
+                          className={[
+                            "transition-colors hover:bg-emerald-50/40",
+                            i.isLocked ? "bg-amber-50/70" : "",
+                          ].join(" ")}
                         >
                           <td className="p-3 border-b">
-                            <span
-                              className={[
-                                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold ring-1",
-                                i.type === "special"
-                                  ? "bg-sky-100 text-sky-900 ring-sky-200"
-                                  : "bg-indigo-100 text-indigo-900 ring-indigo-200",
-                              ].join(" ")}
-                            >
-                              {i.label}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={[
+                                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold ring-1",
+                                  i.type === "special"
+                                    ? "bg-sky-100 text-sky-900 ring-sky-200"
+                                    : "bg-indigo-100 text-indigo-900 ring-indigo-200",
+                                ].join(" ")}
+                              >
+                                {i.label}
+                              </span>
+
+                              {i.isLocked && (
+                                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold ring-1 bg-amber-100 text-amber-900 ring-amber-200">
+                                  อั้น 50%
+                                </span>
+                              )}
+                            </div>
                           </td>
+
                           <td className="p-3 border-b font-mono">
                             {i.numbers.join(" ")}
                           </td>
+
                           <td className="p-3 border-b text-right font-extrabold">
-                            {cn(i.amount)}
+                            <div className="leading-tight">
+                              <div>{cn(i.amountNet)}</div>
+                              {i.isLocked && (
+                                <div className="text-xs text-slate-400 line-through font-semibold">
+                                  {cn(i.amountGross)}
+                                </div>
+                              )}
+                            </div>
                           </td>
+
                           <td className="p-3 border-b text-slate-600 whitespace-nowrap">
                             {formatDateTimeTH(i.createdAt)}
                           </td>
+
                           <td className="p-3 border-b">{i.buyerName ?? "-"}</td>
                         </tr>
                       ))
@@ -1141,13 +1362,23 @@ export default function LottoPage() {
                 </div>
 
                 <div className="text-right">
-                  <div className="text-sm text-slate-500">ยอดรวมทั้งหมด</div>
+                  <div className="text-sm text-slate-500">ยอดรวมสุทธิ</div>
                   <div className="text-3xl font-extrabold text-slate-900">
-                    {cn(total)}{" "}
+                    {cn(totalNet)}{" "}
                     <span className="text-base font-bold text-slate-500">
                       บาท
                     </span>
                   </div>
+                  <div className="text-xs text-slate-400">
+                    ยอดเต็ม: {cn(totalGross)} บาท
+                  </div>
+
+                  {lockedSummary.count > 0 && (
+                    <div className="mt-2 text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
+                      เลขอั้น {lockedSummary.count} รายการ • เต็ม{" "}
+                      {cn(lockedSummary.gross)} → สุทธิ {cn(lockedSummary.net)}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardShell>

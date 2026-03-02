@@ -30,7 +30,11 @@ const menu = [
   { title: "คีย์ข้อมูลหวย", href: "/Home/Lotto", icon: Keyboard },
   // { title: "ตรวจหวย", href: "/Home/CheckLottery", icon: CheckCircle },
   // { title: "ตั้งค่าตัดเก็บรายตัว", href: "/Home/CutSetting", icon: Sliders },
-  // { title: "ตั้งค่าเลขไม่รับซื้อ", href: "/Home/Blacklist", icon: Ban },
+  {
+    title: "ตั้งค่าเลขอั้น/ไม่รับซื้อ",
+    href: "/Home/Settings/Limits",
+    icon: Ban,
+  },
   // { title: "สรุปยอดซื้อ", href: "/Home/Summary", icon: FileText },
   // { title: "สรุป 2 ตัว บน–ล่าง", href: "/Home/SummaryTwoDigit", icon: Hash },
   // { title: "สรุป 3 ตัว", href: "/Home/SummaryThreeDigit", icon: Hash },
