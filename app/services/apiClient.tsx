@@ -44,6 +44,8 @@ type OrderItemPayload = {
   number: string;
   amount: number;
   created_at: string;
+  is_locked?: boolean; // ✅
+  lock_rate?: number;
 };
 
 type CreateOrderPayload = {
@@ -128,7 +130,12 @@ export const apiClient = {
     apiRequest(`/api/buyers/${id}`, "DELETE", undefined, token),
 
   addOrders: (token: string, payload: CreateOrderPayload) =>
-    apiRequest<unknown>("/api/orders", "POST", payload, token),
+    apiRequest<ApiResponse<{ order_id?: string }>>(
+      "/api/orders",
+      "POST",
+      payload,
+      token,
+    ),
 
   // GET /api/rules
   getRules: (token: string, params?: ListRulesParams) => {
