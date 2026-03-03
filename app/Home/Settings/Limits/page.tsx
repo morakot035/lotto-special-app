@@ -60,6 +60,61 @@ function rowTint(kind: RuleTab) {
 }
 
 /** =========================
+ *  LOCK expansion helpers
+ *  - LOCK 2 ตัว: อั้นกลับด้วย (45 -> 45 + 54)
+ *  - LOCK 3 ตัว: อั้นกลับ 6 กลับ (123 -> 6 permutations)
+ *    (ถ้ามีเลขซ้ำจะได้จำนวน < 6 แบบ unique)
+ *  ========================= */
+function reverse2(n: string): string {
+  return n.length === 2 ? `${n[1]}${n[0]}` : n;
+}
+
+function permuteUnique3(num: string): string[] {
+  // unique permutations for 3 digits
+  const res = new Set<string>();
+  const a = num.split("");
+
+  const swap = (i: number, j: number) => {
+    const t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+  };
+
+  const backtrack = (idx: number) => {
+    if (idx === a.length) {
+      res.add(a.join(""));
+      return;
+    }
+    const used = new Set<string>();
+    for (let i = idx; i < a.length; i++) {
+      if (used.has(a[i])) continue;
+      used.add(a[i]);
+      swap(idx, i);
+      backtrack(idx + 1);
+      swap(idx, i);
+    }
+  };
+
+  backtrack(0);
+  return Array.from(res);
+}
+
+function expandLockNumbers(digits: DigitMode, numbers: string[]): string[] {
+  const out: string[] = [];
+  for (const n of numbers) {
+    if (digits === "2") {
+      out.push(n);
+      out.push(reverse2(n));
+    } else {
+      // 3 digits => 6 permutations (unique)
+      out.push(...permuteUnique3(n));
+    }
+  }
+  // unique + stable
+  return Array.from(new Set(out));
+}
+
+/** =========================
  *  Small UI helpers (pattern same as keying page)
  *  ========================= */
 function CardShell(props: {
@@ -106,9 +161,76 @@ function CardShell(props: {
   );
 }
 
+function UiButton(props: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: "solid" | "outline";
+  tone?: "emerald" | "amber" | "rose" | "slate";
+  disabled?: boolean;
+  className?: string;
+  type?: "button" | "submit";
+}) {
+  const {
+    children,
+    onClick,
+    variant = "solid",
+    tone = "slate",
+    disabled,
+    className,
+    type = "button",
+  } = props;
+
+  const solidMap: Record<typeof tone, string> = {
+    emerald:
+      "bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_18px_40px_-24px_rgba(16,185,129,0.9)]",
+    amber:
+      "bg-amber-500 hover:bg-amber-600 text-white shadow-[0_18px_40px_-24px_rgba(245,158,11,0.7)]",
+    rose: "bg-rose-600 hover:bg-rose-700 text-white shadow-[0_18px_40px_-24px_rgba(244,63,94,0.65)]",
+    slate:
+      "bg-slate-900 hover:bg-slate-800 text-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.55)]",
+  };
+
+  const outlineMap: Record<typeof tone, string> = {
+    emerald: "bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-200",
+    amber: "bg-white hover:bg-amber-50 text-amber-800 border-amber-200",
+    rose: "bg-white hover:bg-rose-50 text-rose-800 border-rose-200",
+    slate: "bg-white hover:bg-slate-50 text-slate-800 border-slate-200",
+  };
+
+  const base =
+    "inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-extrabold transition active:scale-[0.99] focus:outline-none focus:ring-4";
+  const ring =
+    tone === "emerald"
+      ? "focus:ring-emerald-200"
+      : tone === "amber"
+        ? "focus:ring-amber-200"
+        : tone === "rose"
+          ? "focus:ring-rose-200"
+          : "focus:ring-slate-200";
+
+  const style =
+    variant === "solid" ? solidMap[tone] : `border ${outlineMap[tone]}`;
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        base,
+        ring,
+        style,
+        disabled ? "opacity-60 cursor-not-allowed shadow-none" : "",
+        className ?? "",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function LimitsPage() {
   useAuthGuard();
-
   const { showLoading, hideLoading } = useLoading();
 
   // right tab
@@ -196,9 +318,9 @@ export default function LimitsPage() {
       return;
     }
 
-    const raw = normalizeInput(bulkText);
+    const raw0 = normalizeInput(bulkText);
 
-    if (raw.length === 0) {
+    if (raw0.length === 0) {
       await Swal.fire({
         icon: "warning",
         title: "ยังไม่ได้ใส่เลข",
@@ -207,7 +329,7 @@ export default function LimitsPage() {
       return;
     }
 
-    const invalid = raw.filter((n) => !isValidNumber(n, digits));
+    const invalid = raw0.filter((n) => !isValidNumber(n, digits));
     if (invalid.length > 0) {
       await Swal.fire({
         icon: "error",
@@ -219,26 +341,42 @@ export default function LimitsPage() {
       return;
     }
 
-    // กันซ้ำในหน้า (กันเบื้องต้น)
+    // ✅ เฉพาะ “เลขอั้น” ต้องอั้นกลับด้วย
+    // - 2 ตัว: เพิ่มเลขกลับ
+    // - 3 ตัว: เพิ่มครบทุก permutation (6 กลับแบบ unique)
+    const expanded = kind === "LOCK" ? expandLockNumbers(digits, raw0) : raw0;
+
+    // กันซ้ำในหน้า (กันเบื้องต้น) — ต้องกันซ้ำหลัง expand แล้ว
     const existsSet = new Set(
       rules
         .filter((r) => r.kind === kind && String(r.digits) === digits)
         .map((r) => r.number),
     );
-    const toAdd = raw.filter((n) => !existsSet.has(n));
+
+    const toAdd = expanded.filter((n) => !existsSet.has(n));
 
     if (toAdd.length === 0) {
       await Swal.fire({
         icon: "info",
         title: "เลขซ้ำทั้งหมด",
-        text: "เลขที่กรอกมีอยู่แล้ว",
+        text: "เลขที่กรอกมีอยู่แล้ว (รวมเลขกลับแล้ว)",
       });
       return;
     }
 
     const title =
-      kind === "LOCK" ? "เพิ่มเลขอั้น (50%) ?" : "เพิ่มเลขไม่รับซื้อ ?";
-    const badge = kind === "LOCK" ? "เลขอั้น 50%" : "ไม่รับซื้อ";
+      kind === "LOCK"
+        ? `เพิ่มเลขอั้น (50%) + อั้นกลับอัตโนมัติ ?`
+        : "เพิ่มเลขไม่รับซื้อ ?";
+    const badge = kind === "LOCK" ? "เลขอั้น 50% (รวมเลขกลับ)" : "ไม่รับซื้อ";
+
+    // ข้อความช่วยอธิบายการขยาย
+    const explain =
+      kind === "LOCK"
+        ? digits === "2"
+          ? `<div style="margin-top:8px; font-size:12px; color:#64748b">* 2 ตัว: เช่น 45 → เพิ่ม 45 และ 54</div>`
+          : `<div style="margin-top:8px; font-size:12px; color:#64748b">* 3 ตัว: เช่น 123 → เพิ่มครบ 6 กลับ (123,132,213,231,312,321)</div>`
+        : "";
 
     const result = await Swal.fire({
       icon: "question",
@@ -246,12 +384,13 @@ export default function LimitsPage() {
       html: `
         <div style="text-align:left">
           <div><b>ประเภท:</b> ${badge}</div>
-          <div><b>จำนวน:</b> ${toAdd.length.toLocaleString()} เลข</div>
+          <div><b>จำนวนที่จะเพิ่ม:</b> ${toAdd.length.toLocaleString()} เลข</div>
           <div style="margin-top:8px; font-size:12px; color:#64748b">
             ตัวอย่าง: ${toAdd.slice(0, 14).join(" ")}${
               toAdd.length > 14 ? " ..." : ""
             }
           </div>
+          ${explain}
         </div>
       `,
       showCancelButton: true,
@@ -264,12 +403,8 @@ export default function LimitsPage() {
 
     try {
       showLoading();
-      // await Swal.fire({
-      //   title: "กำลังบันทึก...",
-      //   allowOutsideClick: false,
-      //   didOpen: () => Swal.showLoading(),
-      // });
 
+      // ✅ ส่ง “numbers” ที่ขยายแล้วไป backend ทีเดียว
       await apiClient.createRules(token, {
         kind,
         digits: digitsToNum(digits),
@@ -376,48 +511,57 @@ export default function LimitsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header (pattern like keying page) */}
-      <div className="bg-white border-b">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-slate-50 via-slate-50 to-emerald-50/60">
+      {/* glow background */}
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-emerald-200/35 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
+
+      {/* Top bar */}
+      <div className="relative border-b bg-white/85 backdrop-blur">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="h-14 w-14 rounded-2xl bg-emerald-50 border border-emerald-100 grid place-items-center text-emerald-700">
-              {/* settings icon */}
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-emerald-600/10 grid place-items-center text-emerald-700 ring-1 ring-emerald-600/15">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 <path
-                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+                  d="M10 6h10M10 12h10M10 18h10"
                   stroke="currentColor"
                   strokeWidth="2"
+                  strokeLinecap="round"
                 />
                 <path
-                  d="M19.4 15a7.8 7.8 0 0 0 .1-1 7.8 7.8 0 0 0-.1-1l2-1.6-1.9-3.3-2.4 1a7.2 7.2 0 0 0-1.7-1l-.4-2.6H9l-.4 2.6a7.2 7.2 0 0 0-1.7 1l-2.4-1-1.9 3.3 2 1.6a7.8 7.8 0 0 0-.1 1c0 .3 0 .7.1 1l-2 1.6 1.9 3.3 2.4-1c.5.4 1.1.7 1.7 1l.4 2.6h6l.4-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 1.9-3.3-2-1.6Z"
+                  d="M4 7.5h2M4 12h2M4 16.5h2"
                   stroke="currentColor"
                   strokeWidth="2"
-                  strokeLinejoin="round"
+                  strokeLinecap="round"
                 />
               </svg>
             </div>
+
             <div>
               <div className="text-2xl font-extrabold text-slate-900">
                 ตั้งค่าเลขอั้น / เลขไม่รับซื้อ
               </div>
               <div className="text-sm text-slate-500">
-                เลขอั้น = ยึด 50% (คิดยอดสุทธิครึ่งหนึ่ง) • เลขไม่รับซื้อ =
+                เลขอั้น = จ่าย 50% (แต่ “รับซื้อราคาเต็ม”) • เลขไม่รับซื้อ =
                 ห้ามรับรายการนั้น
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 {lockBadge}
                 {blockBadge}
               </div>
             </div>
           </div>
 
+          {/* Back */}
           <Link
             href="/Home"
-            className="inline-flex items-center gap-2 rounded-2xl border bg-white px-5 py-3 font-extrabold text-slate-700 shadow-sm hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold
+                       hover:bg-slate-50 active:scale-[0.99]
+                       shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-200"
           >
-            <span className="h-8 w-8 rounded-full bg-emerald-50 border border-emerald-100 grid place-items-center text-emerald-700">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M15 18l-6-6 6-6"
                   stroke="currentColor"
@@ -433,286 +577,287 @@ export default function LimitsPage() {
       </div>
 
       {/* content */}
-      <div className="mx-auto max-w-6xl p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT */}
-        <CardShell
-          title="เพิ่มกติกา"
-          subtitle="วางเลขหลายตัวได้ (เว้นวรรค/คอมม่า/ขึ้นบรรทัดใหม่) แล้วเลือกเพิ่มเป็น “เลขอั้น” หรือ “ไม่รับซื้อ”"
-          badgeText="RULES"
-          badgeClassName="bg-emerald-50 text-emerald-800 border-emerald-200"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 6v12M6 12h12"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          }
-        >
-          {/* Digit switch */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setDigits("2")}
-              className={`rounded-2xl border px-4 py-3 font-extrabold transition ${
-                digits === "2"
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white hover:bg-slate-50 text-slate-700"
-              }`}
-            >
-              เลข 2 ตัว
-            </button>
-            <button
-              type="button"
-              onClick={() => setDigits("3")}
-              className={`rounded-2xl border px-4 py-3 font-extrabold transition ${
-                digits === "3"
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white hover:bg-slate-50 text-slate-700"
-              }`}
-            >
-              เลข 3 ตัว
-            </button>
-          </div>
-
-          {/* textarea */}
-          <div className="mt-5 rounded-[22px] border bg-slate-50 overflow-hidden">
-            <div className="px-5 py-4 bg-white border-b">
-              <div className="font-extrabold text-slate-800">
-                วางเลขที่ต้องการตั้งค่า
-              </div>
-              <div className="text-xs text-slate-500">
-                ตัวอย่าง: {digits === "2" ? "12 34 56" : "123 456 789"}
-              </div>
-            </div>
-            <div className="p-5 space-y-4">
-              <textarea
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                className="w-full min-h-[220px] rounded-2xl border px-5 py-4 bg-white outline-none focus:ring-2 focus:ring-emerald-200 font-mono text-sm"
-                placeholder={
-                  digits === "2"
-                    ? "เช่น 12 34 56\nหรือ 12,34,56"
-                    : "เช่น 123 456 789\nหรือ 123,456,789"
-                }
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => addRule("LOCK")}
-                  className="rounded-2xl bg-amber-500 hover:bg-amber-600 text-white py-3 font-extrabold transition shadow-sm"
-                >
-                  เพิ่ม “เลขอั้น 50%”
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addRule("BLOCK")}
-                  className="rounded-2xl bg-rose-600 hover:bg-rose-700 text-white py-3 font-extrabold transition shadow-sm"
-                >
-                  เพิ่ม “ไม่รับซื้อ”
-                </button>
-              </div>
-
-              <div className="text-xs text-slate-500">
-                * เลขอั้น: ตอนคีย์หวย จะคิดยอดสุทธิ “ครึ่งหนึ่ง” และควรทำ
-                highlight ในสรุปยอด • เลขไม่รับซื้อ: ควรบล็อกไม่ให้บันทึกรายการ
-              </div>
-            </div>
-          </div>
-        </CardShell>
-
-        {/* RIGHT */}
-        <CardShell
-          title="รายการล่าสุด"
-          subtitle="ดูว่าเรา “อั้นเลขอะไร” / “ไม่รับซื้อเลขอะไร” อยู่บ้าง"
-          badgeText="SUMMARY"
-          badgeClassName="bg-sky-50 text-sky-900 border-sky-200"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M12 6v6l4 2"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          }
-        >
-          {/* tabs */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTab("LOCK")}
-              className={`px-4 py-2 rounded-2xl font-extrabold border transition ${
-                tab === "LOCK"
-                  ? "bg-amber-500 text-white border-amber-500"
-                  : "bg-white hover:bg-slate-50 text-slate-700"
-              }`}
-            >
-              เลขอั้น (50%)
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("BLOCK")}
-              className={`px-4 py-2 rounded-2xl font-extrabold border transition ${
-                tab === "BLOCK"
-                  ? "bg-rose-600 text-white border-rose-600"
-                  : "bg-white hover:bg-slate-50 text-slate-700"
-              }`}
-            >
-              เลขไม่รับซื้อ
-            </button>
-
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={loadRules}
-                className="rounded-2xl border px-4 py-2 text-sm font-extrabold hover:bg-slate-50"
+      <div className="relative mx-auto max-w-6xl px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT: add */}
+          <CardShell
+            title="เพิ่มกติกา"
+            subtitle="วางเลขหลายตัวได้ (เว้นวรรค/คอมม่า/ขึ้นบรรทัดใหม่) แล้วเลือกเพิ่มเป็น “เลขอั้น” หรือ “ไม่รับซื้อ”"
+            badgeText="RULES"
+            badgeClassName="bg-emerald-50 text-emerald-800 border-emerald-200"
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 5v14M5 12h14"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            }
+          >
+            {/* digit switch */}
+            <div className="grid grid-cols-2 gap-3">
+              <UiButton
+                variant={digits === "2" ? "solid" : "outline"}
+                tone={digits === "2" ? "slate" : "slate"}
+                onClick={() => setDigits("2")}
               >
-                รีเฟรช
-              </button>
+                เลข 2 ตัว
+              </UiButton>
+              <UiButton
+                variant={digits === "3" ? "solid" : "outline"}
+                tone={digits === "3" ? "slate" : "slate"}
+                onClick={() => setDigits("3")}
+              >
+                เลข 3 ตัว
+              </UiButton>
             </div>
-          </div>
 
-          {/* filters */}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex gap-2">
+            <div className="mt-4 rounded-[22px] border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100">
+                <div className="text-sm font-extrabold text-slate-800">
+                  วางเลขที่ต้องการตั้งค่า
+                </div>
+                <div className="text-xs text-slate-500">
+                  ตัวอย่าง: {digits === "2" ? "12 34 56" : "123 456 789"}{" "}
+                  (คั่นด้วย เว้นวรรค, คอมม่า, หรือขึ้นบรรทัดใหม่)
+                </div>
+              </div>
+              <div className="p-4">
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  placeholder={
+                    digits === "2" ? "เช่น 12 34 56" : "เช่น 123 456 789"
+                  }
+                  className="w-full min-h-[220px] rounded-2xl border border-emerald-300/60 bg-white px-4 py-3
+                             outline-none focus:ring-4 focus:ring-emerald-200/70 focus:border-emerald-300
+                             font-mono text-sm shadow-sm"
+                />
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <UiButton tone="amber" onClick={() => addRule("LOCK")}>
+                    เพิ่ม “เลขอั้น 50%”
+                  </UiButton>
+                  <UiButton tone="rose" onClick={() => addRule("BLOCK")}>
+                    เพิ่ม “ไม่รับซื้อ”
+                  </UiButton>
+                </div>
+
+                <div className="mt-3 text-xs text-slate-500">
+                  * กด “เลขอั้น” จะ <b>อั้นเลขกลับอัตโนมัติ</b> (2 ตัว = กลับ 1
+                  ครั้ง, 3 ตัว = กลับครบ 6 แบบ)
+                </div>
+              </div>
+            </div>
+          </CardShell>
+
+          {/* RIGHT: table */}
+          <CardShell
+            title="รายการล่าสุด"
+            subtitle="ดูว่า “อั้นเลขอะไร” / “ไม่รับซื้อเลขอะไร” อยู่บ้าง"
+            badgeText="SUMMARY"
+            badgeClassName="bg-sky-50 text-sky-800 border-sky-200"
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 22A10 10 0 1 0 2 12a10 10 0 0 0 10 10Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M12 6v6l4 2"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            }
+          >
+            {/* tabs */}
+            <div className="flex flex-wrap items-center gap-2">
+              <UiButton
+                variant={tab === "LOCK" ? "solid" : "outline"}
+                tone="amber"
+                onClick={() => setTab("LOCK")}
+                className="px-5"
+              >
+                เลขอั้น (50%)
+              </UiButton>
+              <UiButton
+                variant={tab === "BLOCK" ? "solid" : "outline"}
+                tone="slate"
+                onClick={() => setTab("BLOCK")}
+                className="px-5"
+              >
+                เลขไม่รับซื้อ
+              </UiButton>
+
+              <div className="ml-auto flex items-center gap-2">
+                <UiButton
+                  variant="outline"
+                  tone="slate"
+                  onClick={onSearch}
+                  disabled={loadingTable}
+                  className="px-4"
+                >
+                  รีเฟรช
+                </UiButton>
+              </div>
+            </div>
+
+            {/* filters */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="ค้นหาเลข เช่น 123"
-                className="w-full rounded-2xl border px-4 py-3 outline-none focus:ring-2 focus:ring-sky-200"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none
+                           focus:ring-4 focus:ring-sky-200/70 focus:border-sky-300 transition"
               />
+
               <button
                 type="button"
                 onClick={onSearch}
-                className="shrink-0 rounded-2xl border px-4 py-3 font-extrabold hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold
+                           hover:bg-slate-50 active:scale-[0.99] shadow-sm
+                           focus:outline-none focus:ring-4 focus:ring-sky-200"
               >
                 ค้นหา
               </button>
+
+              <select
+                value={filterDigits}
+                onChange={(e) =>
+                  setFilterDigits(e.target.value as "ALL" | DigitMode)
+                }
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none
+                           focus:ring-4 focus:ring-sky-200/70 focus:border-sky-300 transition"
+              >
+                <option value="ALL">ทั้งหมด (2 & 3)</option>
+                <option value="2">เฉพาะ 2 ตัว</option>
+                <option value="3">เฉพาะ 3 ตัว</option>
+              </select>
+
+              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={onlyActive}
+                  onChange={(e) => setOnlyActive(e.target.checked)}
+                />
+                <span className="text-sm font-extrabold text-slate-700">
+                  เฉพาะที่ใช้งาน
+                </span>
+              </label>
             </div>
 
-            <select
-              value={filterDigits}
-              onChange={(e) =>
-                setFilterDigits(e.target.value as "ALL" | DigitMode)
-              }
-              className="rounded-2xl border px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-sky-200"
-            >
-              <option value="ALL">ทั้งหมด (2 & 3)</option>
-              <option value="2">เฉพาะ 2 ตัว</option>
-              <option value="3">เฉพาะ 3 ตัว</option>
-            </select>
-
-            <label className="flex items-center gap-2 rounded-2xl border px-4 py-3 bg-white">
-              <input
-                type="checkbox"
-                checked={onlyActive}
-                onChange={(e) => setOnlyActive(e.target.checked)}
-              />
-              <span className="text-sm font-extrabold text-slate-700">
-                เฉพาะที่ใช้งาน
-              </span>
-            </label>
-          </div>
-
-          {/* table */}
-          <div className="mt-4 overflow-auto rounded-[22px] border">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-700">
-                <tr>
-                  <th className="p-3 border-b text-left whitespace-nowrap">
-                    กติกา
-                  </th>
-                  <th className="p-3 border-b text-left whitespace-nowrap">
-                    ชนิด
-                  </th>
-                  <th className="p-3 border-b text-left whitespace-nowrap">
-                    เลข
-                  </th>
-                  <th className="p-3 border-b text-left whitespace-nowrap">
-                    สถานะ
-                  </th>
-                  <th className="p-3 border-b text-right whitespace-nowrap">
-                    จัดการ
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingTable ? (
+            {/* table */}
+            <div className="mt-4 overflow-auto rounded-3xl border border-slate-200 bg-white">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-slate-700">
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                      กำลังโหลด...
-                    </td>
+                    <th className="p-3 border-b text-left font-extrabold">
+                      กติกา
+                    </th>
+                    <th className="p-3 border-b text-left font-extrabold">
+                      ชนิด
+                    </th>
+                    <th className="p-3 border-b text-left font-extrabold">
+                      เลข
+                    </th>
+                    <th className="p-3 border-b text-left font-extrabold">
+                      สถานะ
+                    </th>
+                    <th className="p-3 border-b text-right font-extrabold">
+                      จัดการ
+                    </th>
                   </tr>
-                ) : shown.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
-                      ยังไม่มีรายการ
-                    </td>
-                  </tr>
-                ) : (
-                  shown.map((r) => (
-                    <tr
-                      key={r._id}
-                      className={`hover:bg-slate-50 ${rowTint(r.kind)}`}
-                    >
-                      <td className="p-3 border-b">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold border ${badgeKind(
-                            r.kind,
-                          )}`}
-                        >
-                          {r.kind === "LOCK" ? "อั้น 50%" : "ไม่รับซื้อ"}
-                        </span>
-                      </td>
-                      <td className="p-3 border-b">{r.digits} ตัว</td>
-                      <td className="p-3 border-b font-mono text-base font-extrabold">
-                        {r.number}
-                      </td>
-                      <td className="p-3 border-b">
-                        <button
-                          type="button"
-                          onClick={() => toggleRuleActive(r._id, !r.active)}
-                          className={`rounded-2xl px-4 py-2 font-extrabold border transition ${
-                            r.active
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-                          }`}
-                        >
-                          {r.active ? "ใช้งาน" : "ปิด"}
-                        </button>
-                      </td>
-                      <td className="p-3 border-b text-right">
-                        <button
-                          type="button"
-                          onClick={() => removeRule(r)}
-                          className="rounded-2xl border px-4 py-2 font-extrabold hover:bg-white"
-                        >
-                          ลบ
-                        </button>
+                </thead>
+
+                <tbody>
+                  {loadingTable ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="p-10 text-center text-slate-500"
+                      >
+                        กำลังโหลด...
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : shown.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="p-10 text-center text-slate-500"
+                      >
+                        ยังไม่มีรายการ
+                      </td>
+                    </tr>
+                  ) : (
+                    shown.map((r) => (
+                      <tr
+                        key={r._id}
+                        className={[
+                          "hover:bg-emerald-50/40 transition-colors",
+                          rowTint(r.kind),
+                        ].join(" ")}
+                      >
+                        <td className="p-3 border-b">
+                          <span
+                            className={[
+                              "inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold border",
+                              badgeKind(r.kind),
+                            ].join(" ")}
+                          >
+                            {r.kind === "LOCK" ? "อั้น 50%" : "ไม่รับซื้อ"}
+                          </span>
+                        </td>
+                        <td className="p-3 border-b">{r.digits} ตัว</td>
+                        <td className="p-3 border-b font-mono text-base font-black">
+                          {r.number}
+                        </td>
+                        <td className="p-3 border-b">
+                          <button
+                            type="button"
+                            onClick={() => toggleRuleActive(r._id, !r.active)}
+                            className={[
+                              "rounded-full px-4 py-1.5 text-xs font-extrabold border transition",
+                              r.active
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100",
+                            ].join(" ")}
+                          >
+                            {r.active ? "ใช้งาน" : "ปิด"}
+                          </button>
+                        </td>
+                        <td className="p-3 border-b text-right">
+                          <UiButton
+                            variant="outline"
+                            tone="slate"
+                            onClick={() => removeRule(r)}
+                            className="px-4 py-2"
+                          >
+                            ลบ
+                          </UiButton>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          {/* pink info bar (same pattern as your keying page) */}
-          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-center text-rose-700 font-extrabold text-sm">
-            *** เลขอั้น จะคิดยอดสุทธิ 50% ตอนคีย์ทันที • เลขไม่รับซื้อ
-            ควรบล็อกไม่ให้บันทึกรายการ ***
-          </div>
-        </CardShell>
+            <div className="mt-4 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3 text-rose-700 text-xs font-extrabold text-center">
+              *** เลขอั้น = จ่าย 50% ตอนถูกรางวัล • เลขไม่รับซื้อ =
+              ระบบควรเตือนและไม่ให้บันทึกรายการนั้น ***
+            </div>
+          </CardShell>
+        </div>
+
+        <div className="mt-8 text-center text-xs text-slate-400">
+          © 2026 Lotto App. All rights reserved.
+        </div>
       </div>
     </div>
   );
