@@ -96,6 +96,65 @@ export type CreateRulesResult = {
   items?: Rule[];
 };
 
+export type KeepSettings = {
+  three_top: number;
+  three_bottom: number;
+  three_tod: number;
+  two_top: number;
+  two_bottom: number;
+};
+
+// ✅ เพิ่ม
+export type SuccessResponse<T> = {
+  success: boolean;
+  data: T;
+  message?: string;
+};
+
+export type ReportRow = {
+  number: string;
+  amount: number;
+  is_locked: boolean;
+};
+
+export type ReportSection = {
+  keep: ReportRow[];
+  send: ReportRow[];
+};
+
+export type ReportSummaryTable = {
+  two_top: ReportSection;
+  two_bottom: ReportSection;
+  three_top: ReportSection;
+  three_bottom: ReportSection;
+  three_tod: ReportSection;
+};
+
+export type TwoDigitSummaryRow = {
+  number: string;
+  two_top: number;
+  two_bottom: number;
+  is_locked?: boolean;
+};
+
+export type TwoDigitSummaryResponse = {
+  keep: TwoDigitSummaryRow[];
+  send: TwoDigitSummaryRow[];
+};
+
+export type ThreeDigitSummaryRow = {
+  number: string;
+  three_top: number;
+  three_bottom: number;
+  three_tod: number;
+  is_locked?: boolean;
+};
+
+export type ThreeDigitSummaryResponse = {
+  keep: ThreeDigitSummaryRow[];
+  send: ThreeDigitSummaryRow[];
+};
+
 export const apiClient = {
   login: (email: string, password: string) =>
     apiRequest<{ token: string }>("/api/auth/login", "POST", {
@@ -176,4 +235,88 @@ export const apiClient = {
       undefined,
       token,
     ),
+
+  fetchKeepSettings: (token: string) =>
+    apiRequest<SuccessResponse<KeepSettings>>(
+      "/api/keep-settings/fetch",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  // ✅ PUT /api/keep-settings
+  updateKeepSettings: (token: string, payload: KeepSettings) =>
+    apiRequest<SuccessResponse<KeepSettings>>(
+      "/api/keep-settings/update",
+      "PUT",
+      payload,
+      token,
+    ),
+
+  deleteEntries: (token: string) =>
+    apiRequest(`/api/order/delete`, "POST", undefined, token),
+
+  getTwoDigitSummaryReport: (token: string) =>
+    apiRequest<SuccessResponse<TwoDigitSummaryResponse>>(
+      "/api/reports/summary/2d",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  getThreeDigitSummaryReport: (token: string) =>
+    apiRequest<SuccessResponse<ThreeDigitSummaryResponse>>(
+      "/api/reports/summary/3d",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  exportSummary2DExcel: async (token: string): Promise<void> => {
+    const res = await fetch(`${BASE_URL}/api/reports/summary/2d/export-excel`, {
+      method: "GET",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Export 2D excel failed");
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "report_2d.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  exportSummary3DExcel: async (token: string): Promise<void> => {
+    const res = await fetch(`${BASE_URL}/api/reports/summary/3d/export-excel`, {
+      method: "GET",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Export 3D excel failed");
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "report_3d.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

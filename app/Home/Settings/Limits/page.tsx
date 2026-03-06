@@ -344,7 +344,7 @@ export default function LimitsPage() {
     // ✅ เฉพาะ “เลขอั้น” ต้องอั้นกลับด้วย
     // - 2 ตัว: เพิ่มเลขกลับ
     // - 3 ตัว: เพิ่มครบทุก permutation (6 กลับแบบ unique)
-    const expanded = kind === "LOCK" ? expandLockNumbers(digits, raw0) : raw0;
+    const expanded = expandLockNumbers(digits, raw0);
 
     // กันซ้ำในหน้า (กันเบื้องต้น) — ต้องกันซ้ำหลัง expand แล้ว
     const existsSet = new Set(
@@ -367,8 +367,10 @@ export default function LimitsPage() {
     const title =
       kind === "LOCK"
         ? `เพิ่มเลขอั้น (50%) + อั้นกลับอัตโนมัติ ?`
-        : "เพิ่มเลขไม่รับซื้อ ?";
-    const badge = kind === "LOCK" ? "เลขอั้น 50% (รวมเลขกลับ)" : "ไม่รับซื้อ";
+        : `เพิ่มเลขไม่รับซื้อ + บล็อกกลับอัตโนมัติ ?`;
+
+    const badge =
+      kind === "LOCK" ? "เลขอั้น 50% (รวมเลขกลับ)" : "ไม่รับซื้อ (รวมเลขกลับ)";
 
     // ข้อความช่วยอธิบายการขยาย
     const explain =

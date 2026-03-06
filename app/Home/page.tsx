@@ -29,16 +29,16 @@ const menu = [
   { title: "ผู้ซื้อ/คนเดินโพยหวย", href: "/Home/Buyers", icon: Users },
   { title: "คีย์ข้อมูลหวย", href: "/Home/Lotto", icon: Keyboard },
   // { title: "ตรวจหวย", href: "/Home/CheckLottery", icon: CheckCircle },
-  // { title: "ตั้งค่าตัดเก็บรายตัว", href: "/Home/CutSetting", icon: Sliders },
+  { title: "ตั้งค่าตัดเก็บรายตัว", href: "/Home/Settings/Keep", icon: Sliders },
   {
     title: "ตั้งค่าเลขอั้น/ไม่รับซื้อ",
     href: "/Home/Settings/Limits",
     icon: Ban,
   },
-  // { title: "สรุปยอดซื้อ", href: "/Home/Summary", icon: FileText },
-  // { title: "สรุป 2 ตัว บน–ล่าง", href: "/Home/SummaryTwoDigit", icon: Hash },
-  // { title: "สรุป 3 ตัว", href: "/Home/SummaryThreeDigit", icon: Hash },
-  // { title: "ล้างข้อมูลทวย", href: "/home/backup", icon: Database },
+  // { title: "สรุปยอดซื้อ", href: "/Home/Reports/Summary", icon: FileText },
+  { title: "สรุป 2 ตัว บน–ล่าง", href: "/Home/Reports/2d", icon: Hash },
+  { title: "สรุป 3 ตัว", href: "/Home/Reports/3d", icon: Hash },
+  { title: "ล้างข้อมูลหวย", href: "/home/backup", icon: Database },
 ];
 
 export default function HomePage() {
@@ -49,21 +49,21 @@ export default function HomePage() {
   const { showLoading, hideLoading } = useLoading();
 
   const handleDeleteAllEntries = async () => {
-    // const token = getToken();
-    // if (!token) return;
-    // setDeleting(true);
-    // try {
-    //   showLoading();
-    //   await apiClient.deleteEntries(token);
-    //   toast.success("ลบข้อมูลทั้งหมดสำเร็จ");
-    //   setOpenConfirm(false);
-    // } catch (err) {
-    //   console.error(err);
-    //   toast.error("ลบข้อมูลไม่สำเร็จ");
-    // } finally {
-    //   hideLoading();
-    //   setDeleting(false);
-    // }
+    const token = getToken();
+    if (!token) return;
+    setDeleting(true);
+    try {
+      showLoading();
+      // await apiClient.deleteEntries(token);
+      toast.success("ลบข้อมูลทั้งหมดสำเร็จ");
+      setOpenConfirm(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("ลบข้อมูลไม่สำเร็จ");
+    } finally {
+      hideLoading();
+      setDeleting(false);
+    }
   };
 
   return (
@@ -79,7 +79,7 @@ export default function HomePage() {
       {/* Menu */}
       <section className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
         {menu.map(({ title, href, icon: Icon }) => {
-          const isDeleteMenu = title === "ล้างข้อมูลทวย";
+          const isDeleteMenu = title === "ล้างข้อมูลหวย";
           return (
             <button
               key={title}
