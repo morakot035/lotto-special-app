@@ -54,7 +54,7 @@ export default function HomePage() {
     setDeleting(true);
     try {
       showLoading();
-      // await apiClient.deleteEntries(token);
+      await apiClient.deleteEntries(token);
       toast.success("ลบข้อมูลทั้งหมดสำเร็จ");
       setOpenConfirm(false);
     } catch (err) {

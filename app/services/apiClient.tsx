@@ -254,7 +254,7 @@ export const apiClient = {
     ),
 
   deleteEntries: (token: string) =>
-    apiRequest(`/api/order/delete`, "POST", undefined, token),
+    apiRequest(`/api/orders/delete`, "POST", undefined, token),
 
   getTwoDigitSummaryReport: (token: string) =>
     apiRequest<SuccessResponse<TwoDigitSummaryResponse>>(
