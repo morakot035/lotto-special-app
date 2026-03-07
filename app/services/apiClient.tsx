@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_URL = "https://lotto-special-services.onrender.com";
 
 async function apiRequest<T = unknown>(
   endpoint: string,
