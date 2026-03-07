@@ -155,6 +155,24 @@ export type ThreeDigitSummaryResponse = {
   send: ThreeDigitSummaryRow[];
 };
 
+export type KickRuleMode = "FULL_SEND" | "REDUCE_KEEP";
+
+export type KickRule = {
+  _id: string;
+  number: string;
+  bet_type:
+    | "สองตัวบน"
+    | "สองตัวล่าง"
+    | "สามตัวบน"
+    | "สามตัวล่าง"
+    | "สามตัวโต๊ด";
+  mode: KickRuleMode;
+  amount: number;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export const apiClient = {
   login: (email: string, password: string) =>
     apiRequest<{ token: string }>("/api/auth/login", "POST", {
@@ -319,4 +337,55 @@ export const apiClient = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+
+  getKickRules: (token: string) =>
+    apiRequest<SuccessResponse<KickRule[]>>(
+      "/api/kick-rules",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  createKickRule: (
+    token: string,
+    payload: {
+      number: string;
+      bet_type: KickRule["bet_type"];
+      mode: KickRuleMode;
+      amount?: number;
+      active?: boolean;
+    },
+  ) =>
+    apiRequest<SuccessResponse<KickRule>>(
+      "/api/kick-rules",
+      "POST",
+      payload,
+      token,
+    ),
+
+  updateKickRule: (
+    token: string,
+    id: string,
+    payload: Partial<{
+      number: string;
+      bet_type: KickRule["bet_type"];
+      mode: KickRuleMode;
+      amount: number;
+      active: boolean;
+    }>,
+  ) =>
+    apiRequest<SuccessResponse<KickRule>>(
+      `/api/kick-rules/${id}`,
+      "PUT",
+      payload,
+      token,
+    ),
+
+  deleteKickRule: (token: string, id: string) =>
+    apiRequest<SuccessResponse<KickRule>>(
+      `/api/kick-rules/${id}`,
+      "DELETE",
+      undefined,
+      token,
+    ),
 };
