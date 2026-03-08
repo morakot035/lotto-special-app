@@ -178,7 +178,7 @@ export default function KeepPerNumberSettingPage() {
                       ตั้งค่าตัดเก็บรายตัว
                     </div>
                     <div className="text-sm text-slate-500">
-                      ไม่รวมเลขวิ่ง • ใช้สำหรับเก็บยอดไว้กินเองต่อเลข
+                      ใช้สำหรับเก็บยอดไว้กินเองต่อเลข
                     </div>
                   </div>
                 </div>

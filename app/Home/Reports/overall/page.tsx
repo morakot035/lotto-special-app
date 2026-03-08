@@ -51,7 +51,7 @@ export default function ReportOverallPage() {
               สรุปยอดทั้งหมด
             </h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              ไม่รวมเลขวิ่ง • แสดงยอดซื้อรวมและยอดรวมทั้งหมด
+              แสดงยอดซื้อรวมและยอดรวมทั้งหมด
             </p>
           </div>
 

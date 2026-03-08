@@ -180,7 +180,7 @@ function parseQuickToRows(text: string): { rows: BetRow[]; errors: string[] } {
     const g3 = nums.filter((n) => n.length === 3);
     const other = nums.filter((n) => ![1, 2, 3].includes(n.length));
     if (other.length) {
-      errors.push(`บรรทัด ${li + 1}: รองรับเฉพาะเลข 1/2/3 หลัก`);
+      errors.push(`บรรทัด ${li + 1}: รองรับเฉพาะเลข 2/3 หลัก`);
       continue;
     }
 
@@ -867,7 +867,7 @@ export default function LottoPage() {
             <div className="space-y-6">
               <CardShell
                 title="ผู้ซื้อ / คนเดินโพย"
-                subtitle="ดึงข้อมูลจาก MongoDB (buyers)"
+                subtitle="ดึงข้อมูลจาก (buyers)"
                 tone="green"
                 icon={
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -987,7 +987,7 @@ export default function LottoPage() {
 
                 <div className="mt-4">
                   <PrimaryButton onClick={addQuick}>
-                    ตกลง (แทงเร็ว → แตกเป็นรายการด้านขวา)
+                    บันทึกแทงเร็ว
                   </PrimaryButton>
                 </div>
               </CardShell>
@@ -1151,7 +1151,7 @@ export default function LottoPage() {
 
                 <div className="mt-4">
                   <PrimaryButton onClick={addSpecial}>
-                    ตกลง (เลขพิเศษ → แตกเป็นรายการด้านขวา)
+                    บันทึกเลขพิเศษ
                   </PrimaryButton>
                 </div>
               </CardShell>
@@ -1235,7 +1235,7 @@ export default function LottoPage() {
                             {i.numbers.join(" ")}
                             {i.isLocked ? (
                               <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold bg-amber-100 text-amber-900 ring-1 ring-amber-200">
-                                อั้น 50%
+                                อั้น
                               </span>
                             ) : null}
                           </td>

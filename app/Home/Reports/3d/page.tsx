@@ -289,11 +289,11 @@ function SummaryCard3D(props: {
                     <td className="border-b border-slate-200 px-6 py-4 text-center text-[18px] font-black text-slate-800">
                       <div className="inline-flex items-center gap-2">
                         <span>{row.number}</span>
-                        {row.is_locked ? (
+                        {/* {row.is_locked ? (
                           <span className="rounded-full bg-rose-600 px-2.5 py-1 text-xs font-black text-white">
                             อั้น
                           </span>
-                        ) : null}
+                        ) : null} */}
                       </div>
                     </td>
                     <td className="border-b border-slate-200 px-6 py-4 text-center text-[18px] text-slate-800">

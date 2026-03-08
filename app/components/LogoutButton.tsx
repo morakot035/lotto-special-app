@@ -13,7 +13,7 @@ export default function LogoutButton() {
         router.replace("/Login");
       }}
     >
-      <LogOut className="w-5 h-5" />
+      ออกจากระบบ
     </button>
   );
 }
