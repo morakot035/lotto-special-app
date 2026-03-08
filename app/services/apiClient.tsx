@@ -1,5 +1,6 @@
 const BASE_URL = "https://lotto-special-services.onrender.com";
-
+//https://lotto-special-services.onrender.com
+//http://localhost:4000
 async function apiRequest<T = unknown>(
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
@@ -171,6 +172,80 @@ export type KickRule = {
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type OverallSummaryResponse = {
+  two_top: number;
+  two_bottom: number;
+  three_top: number;
+  three_bottom: number;
+  three_tod: number;
+  grand_total: number;
+};
+
+export type BuyerSummaryRow = {
+  buyer_id: string;
+  buyer_name: string;
+  total_amount: number;
+  order_count: number;
+  last_created_at?: string;
+};
+
+export type PaginationMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type BuyerSummaryListResponse = {
+  rows: BuyerSummaryRow[];
+  pagination: PaginationMeta;
+};
+
+export type BuyerDetailRow = {
+  order_id: string;
+  buyer_name: string;
+  order_created_at: string;
+  bet_type: string;
+  number: string;
+  amount: number;
+  keep_amount: number;
+  send_amount: number;
+  is_locked: boolean;
+  kick_mode: string | null;
+};
+
+export type BuyerSummaryDetailResponse = {
+  buyer: {
+    buyer_name: string;
+    total_amount: number;
+    order_count: number;
+  };
+  rows: BuyerDetailRow[];
+  pagination: PaginationMeta;
+};
+
+export type OrderItemListRow = {
+  order_id: string;
+  item_index: number;
+  bet_type: string;
+  number: string;
+  amount: number;
+  created_at: string;
+  buyer_name: string;
+  is_locked: boolean;
+  kick_mode: string | null;
+};
+
+export type OrderItemListResponse = {
+  rows: OrderItemListRow[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 export const apiClient = {
@@ -386,6 +461,70 @@ export const apiClient = {
       `/api/kick-rules/${id}`,
       "DELETE",
       undefined,
+      token,
+    ),
+
+  getOverallSummaryReport: (token: string) =>
+    apiRequest<SuccessResponse<OverallSummaryResponse>>(
+      "/api/reports/summary/overall",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  getBuyerSummaries: (token: string, page = 1, pageSize = 10) =>
+    apiRequest<SuccessResponse<BuyerSummaryListResponse>>(
+      `/api/buyer-summary?page=${page}&pageSize=${pageSize}`,
+      "GET",
+      undefined,
+      token,
+    ),
+
+  getBuyerSummaryDetails: (
+    token: string,
+    buyerId: string,
+    page = 1,
+    pageSize = 50,
+  ) =>
+    apiRequest<SuccessResponse<BuyerSummaryDetailResponse>>(
+      `/api/buyer-summary/${buyerId}/details?page=${page}&pageSize=${pageSize}`,
+      "GET",
+      undefined,
+      token,
+    ),
+
+  getOrderItems: (
+    token: string,
+    params?: {
+      page?: number;
+      pageSize?: number;
+      betType?: string;
+      q?: string;
+    },
+  ) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+    if (params?.betType) qs.set("betType", params.betType);
+    if (params?.q) qs.set("q", params.q);
+
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiRequest<SuccessResponse<OrderItemListResponse>>(
+      `/api/order-items${suffix}`,
+      "GET",
+      undefined,
+      token,
+    );
+  },
+
+  bulkDeleteOrderItems: (
+    token: string,
+    items: Array<{ order_id: string; item_index: number }>,
+  ) =>
+    apiRequest<SuccessResponse<{ deletedCount: number; recalc: unknown }>>(
+      "/api/order-items/bulk-delete",
+      "POST",
+      { items },
       token,
     ),
 };

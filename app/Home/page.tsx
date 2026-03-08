@@ -36,6 +36,17 @@ const menu = [
     icon: Ban,
   },
   { title: "เตะตัดเก็บรายตัว", href: "/Home/KickRules", icon: FileText },
+  {
+    title: "สรุปยอดผู้ซื้อ",
+    href: "/Home/Reports/buyerSummary",
+    icon: CheckCircle,
+  },
+  {
+    title: "สรุปรายการซื้อทั้งหมด",
+    href: "/Home/Reports/orderItems",
+    icon: Hash,
+  },
+  { title: "สรุปยอดซื้อ", href: "/Home/Reports/overall", icon: Hash },
   { title: "สรุป 2 ตัว บน–ล่าง", href: "/Home/Reports/2d", icon: Hash },
   { title: "สรุป 3 ตัว", href: "/Home/Reports/3d", icon: Hash },
   { title: "ล้างข้อมูลหวย", href: "/home/backup", icon: Database },
