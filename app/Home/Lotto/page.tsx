@@ -48,14 +48,7 @@ interface Buyer {
 type Gate = "3" | "6";
 
 type BetRow = {
-  betType:
-    | "สองตัวบน"
-    | "สองตัวล่าง"
-    | "สามตัวบน"
-    | "สามตัวล่าง"
-    | "สามตัวโต๊ด"
-    | "วิ่งบน"
-    | "วิ่งล่าง";
+  betType: "สองตัวบน" | "สองตัวล่าง" | "สามตัวบน" | "สามตัวล่าง" | "สามตัวโต๊ด";
   number: string;
   amount: number;
 };
@@ -178,7 +171,7 @@ function parseQuickToRows(text: string): { rows: BetRow[]; errors: string[] } {
     const g1 = nums.filter((n) => n.length === 1);
     const g2 = nums.filter((n) => n.length === 2);
     const g3 = nums.filter((n) => n.length === 3);
-    const other = nums.filter((n) => ![1, 2, 3].includes(n.length));
+    const other = nums.filter((n) => ![2, 3].includes(n.length));
     if (other.length) {
       errors.push(`บรรทัด ${li + 1}: รองรับเฉพาะเลข 2/3 หลัก`);
       continue;
@@ -214,16 +207,16 @@ function parseQuickToRows(text: string): { rows: BetRow[]; errors: string[] } {
     }
 
     // วิ่ง: วิ่งบน*วิ่งล่าง
-    if (g1.length) {
-      const runTop = amts[0] ?? 0;
-      const runBottom = amts[1] ?? 0;
-      for (const n of g1) {
-        if (runTop > 0)
-          rows.push({ betType: "วิ่งบน", number: n, amount: runTop });
-        if (runBottom > 0)
-          rows.push({ betType: "วิ่งล่าง", number: n, amount: runBottom });
-      }
-    }
+    // if (g1.length) {
+    //   const runTop = amts[0] ?? 0;
+    //   const runBottom = amts[1] ?? 0;
+    //   for (const n of g1) {
+    //     if (runTop > 0)
+    //       rows.push({ betType: "วิ่งบน", number: n, amount: runTop });
+    //     if (runBottom > 0)
+    //       rows.push({ betType: "วิ่งล่าง", number: n, amount: runBottom });
+    //   }
+    // }
   }
 
   return { rows, errors };
