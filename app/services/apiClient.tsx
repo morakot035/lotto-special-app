@@ -248,6 +248,47 @@ export type OrderItemListResponse = {
   };
 };
 
+export type LotteryCheckDetailRow = {
+  order_id: string;
+  buyer_id: string;
+  buyer_name: string;
+  bet_type: string;
+  number: string;
+  amount: number;
+  created_at: string;
+};
+
+export type LotteryCheckGroup = {
+  bet_type: string;
+  total_amount: number;
+  total_count: number;
+  rows: LotteryCheckDetailRow[];
+};
+
+export type LotteryCheckResult = {
+  result: {
+    draw_date: string;
+    three_top: string;
+    two_top: string;
+    two_bottom: string;
+    three_bottom_1: string;
+    three_bottom_2: string;
+    three_bottom_3: string;
+    three_bottom_4: string;
+  };
+  summary: LotteryCheckGroup[];
+};
+
+export type LotteryResultForm = {
+  draw_date: string;
+  three_top: string;
+  two_bottom: string;
+  three_bottom_1: string;
+  three_bottom_2: string;
+  three_bottom_3: string;
+  three_bottom_4: string;
+};
+
 export const apiClient = {
   login: (email: string, password: string) =>
     apiRequest<{ token: string }>("/api/auth/login", "POST", {
@@ -525,6 +566,22 @@ export const apiClient = {
       "/api/order-items/bulk-delete",
       "POST",
       { items },
+      token,
+    ),
+
+  getLatestLotteryResult: (token: string) =>
+    apiRequest<SuccessResponse<LotteryResultForm | null>>(
+      "/api/lottery-results/latest",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  saveAndCheckLottery: (token: string, payload: LotteryResultForm) =>
+    apiRequest<SuccessResponse<LotteryCheckResult>>(
+      "/api/lottery-results/check",
+      "POST",
+      payload,
       token,
     ),
 };

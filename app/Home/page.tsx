@@ -100,6 +100,13 @@ const menu: MenuItem[] = [
     bg: "bg-teal-100",
   },
   {
+    title: "ตรวจหวย",
+    href: "/Home/LotteryCheck",
+    icon: CheckCircle,
+    color: "text-fuchsia-600",
+    bg: "bg-fuchsia-100",
+  },
+  {
     title: "ล้างข้อมูลหวย",
     href: "/Home/backup",
     icon: Database,
