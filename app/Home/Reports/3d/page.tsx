@@ -149,12 +149,27 @@ export default function Report3DPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
+            {/* <Link
               href="/Home/Reports/2d"
               className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50"
             >
               รายงาน 2 ตัว
-            </Link>
+            </Link> */}
+
+            <button
+              onClick={async () => {
+                try {
+                  const token = getToken();
+                  if (!token) throw new Error("Token not found");
+                  await apiClient.exportSummary3DPDF(token);
+                } catch (e) {
+                  await Swal.fire("ผิดพลาด", String(e), "error");
+                }
+              }}
+              className="rounded-full border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-black text-rose-700 shadow-sm hover:bg-rose-100"
+            >
+              Export PDF
+            </button>
 
             <button
               onClick={async () => {

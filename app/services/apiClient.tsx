@@ -1,4 +1,4 @@
-const BASE_URL = "https://lotto-special-services.onrender.com";
+const BASE_URL = "http://localhost:4000";
 //https://lotto-special-services.onrender.com
 //http://localhost:4000
 async function apiRequest<T = unknown>(
@@ -584,4 +584,32 @@ export const apiClient = {
       payload,
       token,
     ),
+
+  exportSummary2DPDF: async (token: string) => {
+    const res = await fetch(`${BASE_URL}/api/reports/summary/2d/export-pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Export PDF failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "report_2d.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  exportSummary3DPDF: async (token: string) => {
+    const res = await fetch(`${BASE_URL}/api/reports/summary/3d/export-pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Export PDF failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "report_3d.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };

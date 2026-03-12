@@ -145,6 +145,20 @@ export default function Report2DPage() {
                 try {
                   const token = getToken();
                   if (!token) throw new Error("Token not found");
+                  await apiClient.exportSummary2DPDF(token);
+                } catch (e) {
+                  await Swal.fire("ผิดพลาด", String(e), "error");
+                }
+              }}
+              className="rounded-full border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-black text-rose-700 shadow-sm hover:bg-rose-100"
+            >
+              Export PDF
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const token = getToken();
+                  if (!token) throw new Error("Token not found");
                   await apiClient.exportSummary2DExcel(token);
                 } catch (e) {
                   await Swal.fire("ผิดพลาด", String(e), "error");

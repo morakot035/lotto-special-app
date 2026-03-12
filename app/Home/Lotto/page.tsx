@@ -1214,7 +1214,7 @@ export default function LottoPage() {
             >
               <div className="overflow-auto rounded-3xl border border-slate-200 bg-white">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-slate-700">
+                  <thead className="sticky top-0 z-10 bg-slate-100 text-slate-900">
                     <tr>
                       <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
                         ประเภทหวย
@@ -1255,15 +1255,15 @@ export default function LottoPage() {
                               className={[
                                 "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold ring-1",
                                 i.type === "special"
-                                  ? "bg-sky-100 text-sky-900 ring-sky-200"
-                                  : "bg-indigo-100 text-indigo-900 ring-indigo-200",
+                                  ? "bg-sky-100 text-sky-950 ring-sky-400 border border-sky-300"
+                                  : "bg-indigo-100 text-indigo-950 ring-indigo-400 border border-indigo-300",
                               ].join(" ")}
                             >
                               {i.label}
                             </span>
                           </td>
 
-                          <td className="p-3 border-b font-mono">
+                          <td className="p-3 border-b font-mono text-slate-900 font-bold">
                             {i.numbers.join(" ")}
                             {i.isLocked ? (
                               <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold bg-amber-100 text-amber-900 ring-1 ring-amber-200">
@@ -1272,13 +1272,15 @@ export default function LottoPage() {
                             ) : null}
                           </td>
 
-                          <td className="p-3 border-b text-right font-extrabold">
+                          <td className="p-3 border-b text-right font-extrabold text-slate-900">
                             {cn(i.amount)}
                           </td>
-                          <td className="p-3 border-b text-slate-600 whitespace-nowrap">
+                          <td className="p-3 border-b text-slate-800 whitespace-nowrap font-semibold">
                             {formatDateTimeTH(i.createdAt)}
                           </td>
-                          <td className="p-3 border-b">{i.buyerName ?? "-"}</td>
+                          <td className="p-3 border-b text-slate-900 font-bold">
+                            {i.buyerName ?? "-"}
+                          </td>
                         </tr>
                       ))
                     )}
