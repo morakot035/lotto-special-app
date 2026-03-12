@@ -397,6 +397,32 @@ function uiCheckCard() {
   ].join(" ");
 }
 
+async function alertAndRedirectToLogin(
+  message = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่",
+) {
+  await Swal.fire({
+    icon: "warning",
+    title: "ข้อความแจ้งเตือน",
+    text: message,
+    confirmButtonText: "ตกลง ไปหน้า Login",
+    confirmButtonColor: "#4f46e5",
+    background: "#1e1b4b",
+    color: "#fff",
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+  });
+  // ลบ token เก่าออก แล้ว redirect
+  localStorage.removeItem("token"); // หรือ localStorage.removeItem('token')
+  window.location.href = "/Login";
+}
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // ถ้า decode ไม่ได้ถือว่าหมดอายุ
+  }
+}
 /* =====================
    page
 ===================== */
@@ -427,7 +453,12 @@ export default function LottoPage() {
     const fetchAll = async () => {
       const token = getToken();
       if (!token) {
-        toastError("ยังไม่ได้เข้าสู่ระบบ (ไม่มี token)");
+        await alertAndRedirectToLogin("ยังไม่ได้เข้าสู่ระบบ กรุณา login ก่อน");
+        return;
+      }
+
+      if (isTokenExpired(token)) {
+        await alertAndRedirectToLogin("Token หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่");
         return;
       }
 
@@ -727,7 +758,15 @@ export default function LottoPage() {
     if (!result.isConfirmed) return toastError("ยกเลิกการยืนยันแล้ว");
 
     const token = getToken();
-    if (!token) return toastError("ยังไม่ได้เข้าสู่ระบบ (ไม่มี token)");
+    if (!token) {
+      await alertAndRedirectToLogin("ยังไม่ได้เข้าสู่ระบบ กรุณา login ก่อน");
+      return;
+    }
+
+    if (isTokenExpired(token)) {
+      await alertAndRedirectToLogin("Token หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่");
+      return;
+    }
 
     // ✅ แตกเป็น 1 เลข = 1 รายการ
     const payloadItems: OrderItemPayload[] = items.flatMap((i) =>

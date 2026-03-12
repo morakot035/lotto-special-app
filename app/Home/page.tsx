@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import LogoutButton from "../components/LogoutButton";
 import { useAuthGuard } from "../hooks/useAuthGuard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLoading } from "../context/LoadingContext";
 import { apiClient } from "../services/apiClient";
 import { getToken } from "../services/auth";
@@ -116,11 +116,55 @@ const menu: MenuItem[] = [
   },
 ];
 
+async function alertAndRedirectToLogin(
+  message = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่",
+) {
+  await Swal.fire({
+    icon: "warning",
+    title: "ข้อความแจ้งเตือน",
+    text: message,
+    confirmButtonText: "ตกลง ไปหน้า Login",
+    confirmButtonColor: "#4f46e5",
+    background: "#1e1b4b",
+    color: "#fff",
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+  });
+  // ลบ token เก่าออก แล้ว redirect
+  localStorage.removeItem("token"); // หรือ localStorage.removeItem('token')
+  window.location.href = "/Login";
+}
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // ถ้า decode ไม่ได้ถือว่าหมดอายุ
+  }
+}
+
 export default function HomePage() {
   useAuthGuard();
 
   const [deleting, setDeleting] = useState(false);
   const { showLoading, hideLoading } = useLoading();
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      const token = getToken();
+      if (!token) {
+        await alertAndRedirectToLogin("ยังไม่ได้เข้าสู่ระบบ กรุณา login ก่อน");
+        return;
+      }
+
+      if (isTokenExpired(token)) {
+        await alertAndRedirectToLogin("Token หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+    };
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDeleteAllEntries = async () => {
     const token = getToken();
