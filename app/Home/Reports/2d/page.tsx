@@ -134,12 +134,12 @@ export default function Report2DPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
+            {/* <Link
               href="/Home/Reports/3d"
               className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50"
             >
               รายงาน 3 ตัว
-            </Link>
+            </Link> */}
             <button
               onClick={async () => {
                 try {

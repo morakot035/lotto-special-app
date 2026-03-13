@@ -1,4 +1,4 @@
-const BASE_URL = "https://lotto-special-services.onrender.com";
+const BASE_URL = "http://localhost:4000";
 //https://lotto-special-services.onrender.com
 //http://localhost:4000
 async function apiRequest<T = unknown>(
@@ -248,16 +248,6 @@ export type OrderItemListResponse = {
   };
 };
 
-export type LotteryCheckDetailRow = {
-  order_id: string;
-  buyer_id: string;
-  buyer_name: string;
-  bet_type: string;
-  number: string;
-  amount: number;
-  created_at: string;
-};
-
 export type LotteryCheckGroup = {
   bet_type: string;
   total_amount: number;
@@ -287,6 +277,18 @@ export type LotteryResultForm = {
   three_bottom_2: string;
   three_bottom_3: string;
   three_bottom_4: string;
+};
+
+export type LotteryCheckDetailRow = {
+  order_id: string;
+  buyer_id: string;
+  buyer_name: string;
+  bet_type: string;
+  number: string;
+  amount: number;
+  is_locked: boolean; // ✅ เพิ่ม
+  lock_rate: number; // ✅ เพิ่ม
+  created_at: string;
 };
 
 export const apiClient = {

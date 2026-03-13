@@ -289,10 +289,28 @@ export default function LotteryCheckPage() {
                   onChange={(v) => updateField("draw_date", v)}
                 />
                 <FormRow
-                  label="สามตัวบน / เลขท้าย 3 ตัว"
+                  label="สามตัวบน / สามตัวโต๊ด"
                   value={form.three_top}
                   onChange={(v) => updateField("three_top", v)}
                 />
+                {/* ✅ เพิ่มตรงนี้ — แสดง 2 ตัวบน auto */}
+                <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[280px_1fr]">
+                  <label className="text-right text-[18px] font-black text-slate-400">
+                    สองตัวบน (auto)
+                  </label>
+                  <div className="h-[72px] w-full rounded-[24px] border border-dashed border-slate-200 bg-slate-50/50 px-10 flex items-center">
+                    <span className="text-[30px] font-black text-sky-600">
+                      {form.three_top.length === 3 ? (
+                        form.three_top.slice(-2)
+                      ) : (
+                        <span className="text-slate-300">--</span>
+                      )}
+                    </span>
+                    <span className="ml-3 text-sm font-semibold text-slate-400">
+                      (2 ตัวท้ายของ 3 ตัวบน)
+                    </span>
+                  </div>
+                </div>
                 <FormRow
                   label="สองตัว (ล่าง)"
                   value={form.two_bottom}
@@ -453,10 +471,14 @@ function WinnerDetailModal(props: {
 }) {
   if (!props.open || !props.group) return null;
 
-  const total = props.group.rows.reduce(
-    (sum, row) => sum + Number(row.amount || 0),
+  const totalBet = props.group.rows.reduce(
+    (s, r) => s + Number(r.amount || 0),
     0,
   );
+  const totalPay = props.group.rows.reduce((s, r) => {
+    const rate = r.is_locked ? (r.lock_rate ?? 0.5) : 1;
+    return s + Number(r.amount || 0) * rate;
+  }, 0);
 
   return (
     <div className="fixed inset-0 z-50">
@@ -469,11 +491,14 @@ function WinnerDetailModal(props: {
                 รายละเอียดผู้ถูกรางวัล
               </h3>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {props.group.bet_type} • รวม {formatMoney(total)} บาท •{" "}
-                {props.group.total_count} รายการ
+                {props.group.bet_type} • ซื้อรวม {formatMoney(totalBet)} บาท •
+                จ่ายรวม{" "}
+                <span className="font-black text-emerald-700">
+                  {formatMoney(totalPay)} บาท
+                </span>{" "}
+                • {props.group.total_count} รายการ
               </p>
             </div>
-
             <button
               onClick={props.onClose}
               className="rounded-full border px-4 py-2 text-sm font-black text-slate-700"
@@ -487,16 +512,22 @@ function WinnerDetailModal(props: {
               <table className="w-full border-separate border-spacing-0">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black">
+                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black text-slate-900">
+                      ประเภท
+                    </th>
+                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black text-slate-900">
                       เลขที่ถูก
                     </th>
-                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black">
-                      จำนวนเงิน
+                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black text-slate-900">
+                      ยอดซื้อ
                     </th>
-                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black">
+                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black text-slate-900">
+                      ยอดจ่าย
+                    </th>
+                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black text-slate-900">
                       ผู้ซื้อ
                     </th>
-                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black">
+                    <th className="border-b border-slate-200 px-4 py-3 text-center font-black text-slate-900">
                       เวลา
                     </th>
                   </tr>
@@ -506,29 +537,116 @@ function WinnerDetailModal(props: {
                   {props.group.rows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={6}
                         className="px-4 py-10 text-center text-slate-400"
                       >
                         ไม่มีข้อมูล
                       </td>
                     </tr>
                   ) : (
-                    props.group.rows.map((row, idx) => (
-                      <tr key={`${row.order_id}-${row.number}-${idx}`}>
-                        <td className="border-b border-slate-200 px-4 py-3 text-center text-[18px] font-black text-slate-900">
-                          {row.number}
-                        </td>
-                        <td className="border-b border-slate-200 px-4 py-3 text-center text-[18px] font-bold text-slate-800">
-                          {formatMoney(row.amount)}
-                        </td>
-                        <td className="border-b border-slate-200 px-4 py-3 text-center text-[18px] font-semibold text-slate-700">
-                          {row.buyer_name}
-                        </td>
-                        <td className="border-b border-slate-200 px-4 py-3 text-center text-[16px] font-medium text-slate-500">
-                          {row.created_at}
-                        </td>
-                      </tr>
-                    ))
+                    props.group.rows.map((row, idx) => {
+                      const rate = row.is_locked ? (row.lock_rate ?? 0.5) : 1;
+                      const payAmt = row.amount * rate;
+                      const locked = row.is_locked;
+
+                      const betTypeBadge = () => {
+                        switch (row.bet_type) {
+                          case "สามตัวบน":
+                            return {
+                              label: "3 บน",
+                              cls: "bg-emerald-50 text-emerald-800 border-emerald-300",
+                            };
+                          case "สามตัวโต๊ด":
+                            return {
+                              label: "โต๊ด",
+                              cls: "bg-purple-50 text-purple-800 border-purple-300",
+                            };
+                          case "สองตัวบน":
+                            return {
+                              label: "2 บน",
+                              cls: "bg-sky-50 text-sky-800 border-sky-300",
+                            };
+                          case "สองตัวล่าง":
+                            return {
+                              label: "2 ล่าง",
+                              cls: "bg-orange-50 text-orange-800 border-orange-300",
+                            };
+                          case "สามตัวล่าง":
+                            return {
+                              label: "3 ล่าง",
+                              cls: "bg-slate-50 text-slate-700 border-slate-300",
+                            };
+                          default:
+                            return {
+                              label: row.bet_type,
+                              cls: "bg-slate-50 text-slate-700 border-slate-300",
+                            };
+                        }
+                      };
+
+                      const badge = betTypeBadge();
+
+                      return (
+                        <tr
+                          key={`${row.order_id}-${row.number}-${idx}`}
+                          className={locked ? "bg-rose-50" : ""}
+                        >
+                          {/* ประเภท */}
+                          <td className="border-b border-slate-200 px-4 py-3 text-center">
+                            <span
+                              className={[
+                                "inline-flex items-center rounded-full px-3 py-1 text-sm font-black border",
+                                badge.cls,
+                              ].join(" ")}
+                            >
+                              {badge.label}
+                            </span>
+                          </td>
+
+                          {/* เลข */}
+                          <td className="border-b border-slate-200 px-4 py-3 text-center">
+                            <div className="inline-flex items-center gap-2">
+                              <span
+                                className={`text-[18px] font-black ${locked ? "text-rose-700" : "text-slate-900"}`}
+                              >
+                                {row.number}
+                              </span>
+                              {locked && (
+                                <span className="rounded-full bg-rose-600 px-2 py-0.5 text-xs font-black text-white">
+                                  อั้น
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* ยอดซื้อ */}
+                          <td
+                            className={`border-b border-slate-200 px-4 py-3 text-center text-[18px] font-bold ${locked ? "text-rose-600" : "text-slate-800"}`}
+                          >
+                            {formatMoney(row.amount)}
+                          </td>
+
+                          {/* ยอดจ่าย */}
+                          <td
+                            className={`border-b border-slate-200 px-4 py-3 text-center text-[18px] font-black ${locked ? "text-rose-700" : "text-emerald-700"}`}
+                          >
+                            {formatMoney(payAmt)}
+                          </td>
+
+                          {/* ผู้ซื้อ */}
+                          <td
+                            className={`border-b border-slate-200 px-4 py-3 text-center text-[18px] font-semibold ${locked ? "text-rose-600" : "text-slate-700"}`}
+                          >
+                            {row.buyer_name}
+                          </td>
+
+                          {/* เวลา */}
+                          <td className="border-b border-slate-200 px-4 py-3 text-center text-[16px] font-medium text-slate-500">
+                            {row.created_at}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
 
@@ -537,10 +655,14 @@ function WinnerDetailModal(props: {
                     <td className="px-4 py-4 text-center text-[18px] font-black text-slate-900">
                       รวม
                     </td>
+                    <td className="px-4 py-4" />
                     <td className="px-4 py-4 text-center text-[18px] font-black text-slate-900">
-                      {formatMoney(total)}
+                      {formatMoney(totalBet)}
                     </td>
-                    <td className="px-4 py-4" colSpan={2} />
+                    <td className="px-4 py-4 text-center text-[18px] font-black text-emerald-700">
+                      {formatMoney(totalPay)}
+                    </td>
+                    <td colSpan={2} />
                   </tr>
                 </tfoot>
               </table>

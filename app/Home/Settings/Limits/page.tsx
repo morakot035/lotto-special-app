@@ -809,18 +809,18 @@ export default function LimitsPage() {
             {/* table */}
             <div className="mt-4 overflow-auto rounded-3xl border border-slate-200 bg-white">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-slate-700">
+                <thead className="sticky top-0 z-10 bg-slate-100 text-slate-900">
                   <tr>
-                    <th className="p-3 border-b text-left font-extrabold">
+                    <th className="p-3 border-b text-left font-extrabold text-slate-900">
                       กติกา
                     </th>
-                    <th className="p-3 border-b text-left font-extrabold">
+                    <th className="p-3 border-b text-left font-extrabold text-slate-900">
                       ชนิด
                     </th>
-                    <th className="p-3 border-b text-left font-extrabold">
+                    <th className="p-3 border-b text-left font-extrabold text-slate-900">
                       เลข
                     </th>
-                    <th className="p-3 border-b text-left font-extrabold">
+                    <th className="p-3 border-b text-left font-extrabold text-slate-900">
                       สถานะ
                     </th>
                     <th className="p-3 border-b text-right font-extrabold">
@@ -867,8 +867,11 @@ export default function LimitsPage() {
                             {r.kind === "LOCK" ? "อั้น 50%" : "ไม่รับซื้อ"}
                           </span>
                         </td>
-                        <td className="p-3 border-b">{r.digits} ตัว</td>
-                        <td className="p-3 border-b font-mono text-base font-black">
+                        <td className="p-3 border-b text-slate-900 font-bold">
+                          {r.digits} ตัว
+                        </td>
+
+                        <td className="p-3 border-b font-mono text-lg font-black text-slate-900">
                           {r.number}
                         </td>
                         <td className="p-3 border-b">
@@ -878,8 +881,8 @@ export default function LimitsPage() {
                             className={[
                               "rounded-full px-4 py-1.5 text-xs font-extrabold border transition",
                               r.active
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100",
+                                ? "bg-emerald-100 text-emerald-900 border-emerald-400 hover:bg-emerald-200"
+                                : "bg-slate-100 text-slate-700 border-slate-400 hover:bg-slate-200",
                             ].join(" ")}
                           >
                             {r.active ? "ใช้งาน" : "ปิด"}
