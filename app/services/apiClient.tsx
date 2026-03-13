@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "https://lotto-special-services.onrender.com";
 //https://lotto-special-services.onrender.com
 //http://localhost:4000
 async function apiRequest<T = unknown>(
