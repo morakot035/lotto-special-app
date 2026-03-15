@@ -12,8 +12,6 @@ import { getToken } from "../../../services/auth";
 
 const EMPTY: TwoDigitSummaryResponse = { keep: [], send: [] };
 
-const API_BASE = "http://localhost:4000";
-
 function formatMoney(n: number): string {
   return Number(n || 0).toLocaleString("th-TH", {
     minimumFractionDigits: 0,
@@ -46,27 +44,6 @@ function isTokenExpired(token: string): boolean {
   } catch {
     return true;
   }
-}
-
-// เปิด URL ใน tab ใหม่ (ให้ browser จัดการ print/save PDF เอง)
-function openPrintPage(path: string, token: string) {
-  const url = `${API_BASE}${path}?token=${encodeURIComponent(token)}`;
-  window.open(url, "_blank");
-}
-
-// ดาวน์โหลด Excel ผ่าน fetch (เหมือนเดิม)
-async function downloadExcel(path: string, token: string, filename: string) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("ดาวน์โหลดไม่สำเร็จ");
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function Report2DPage() {
@@ -115,8 +92,7 @@ export default function Report2DPage() {
     try {
       const token = getToken();
       if (!token) throw new Error("Token not found");
-      // เปิด tab ใหม่ → หน้า HTML มีปุ่ม "พิมพ์/บันทึก PDF" ให้กดเอง
-      openPrintPage(`/api/reports/summary/2d/export-pdf?mode=${mode}`, token);
+      await apiClient.exportSummary2DPDF(token, mode);
     } catch (e) {
       await Swal.fire("ผิดพลาด", String(e), "error");
     }
@@ -126,13 +102,7 @@ export default function Report2DPage() {
     try {
       const token = getToken();
       if (!token) throw new Error("Token not found");
-      const filename =
-        mode === "keep" ? "report_2d_kept.xlsx" : "report_2d_sent.xlsx";
-      await downloadExcel(
-        `/api/reports/summary/2d/export-excel?mode=${mode}`,
-        token,
-        filename,
-      );
+      await apiClient.exportSummary2DExcel(token, mode);
     } catch (e) {
       await Swal.fire("ผิดพลาด", String(e), "error");
     }
