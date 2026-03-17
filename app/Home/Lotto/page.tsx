@@ -724,6 +724,7 @@ export default function LottoPage() {
     });
 
     setItems((prev) => [...mapped.reverse(), ...prev]);
+    setQuickText("");
     toastSuccess("เพิ่มแทงเร็วลงรายการแล้ว");
   }
 
