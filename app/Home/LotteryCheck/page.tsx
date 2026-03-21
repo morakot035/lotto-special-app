@@ -31,6 +31,15 @@ function formatMoney(n: number): string {
 type WinnerRow = LotteryCheckResult["summary"][number]["rows"][number];
 type WinnerGroup = LotteryCheckResult["summary"][number];
 
+// แยก row ตาม buyer_name ลงท้ายด้วย 1 หรือ 2
+function getGroupFilter(filter: "all" | "1" | "2") {
+  return (row: WinnerRow) => {
+    if (filter === "all") return true;
+    const name = String(row.buyer_name || "").trimEnd();
+    return name.endsWith(filter);
+  };
+}
+
 async function alertAndRedirectToLogin(
   message = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่",
 ) {
@@ -45,16 +54,16 @@ async function alertAndRedirectToLogin(
     allowOutsideClick: false,
     allowEscapeKey: false,
   });
-  // ลบ token เก่าออก แล้ว redirect
-  localStorage.removeItem("token"); // หรือ localStorage.removeItem('token')
+  localStorage.removeItem("token");
   window.location.href = "/Login";
 }
+
 function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     return payload.exp * 1000 < Date.now();
   } catch {
-    return true; // ถ้า decode ไม่ได้ถือว่าหมดอายุ
+    return true;
   }
 }
 
@@ -67,6 +76,7 @@ export default function LotteryCheckPage() {
 
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
   const [selectedGroup, setSelectedGroup] = useState<WinnerGroup | null>(null);
+  const [groupFilter, setGroupFilter] = useState<"all" | "1" | "2">("all");
 
   useEffect(() => {
     void loadLatest();
@@ -79,12 +89,10 @@ export default function LotteryCheckPage() {
         await alertAndRedirectToLogin("ยังไม่ได้เข้าสู่ระบบ กรุณา login ก่อน");
         return;
       }
-
       if (isTokenExpired(token)) {
         await alertAndRedirectToLogin("Token หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่");
         return;
       }
-
       const res = await apiClient.getLatestLotteryResult(token);
       if (res.data) {
         setForm({
@@ -104,10 +112,7 @@ export default function LotteryCheckPage() {
 
   const updateField = (key: keyof LotteryResultForm, value: string): void => {
     const cleaned = key === "draw_date" ? value : value.replace(/\D/g, "");
-    setForm((prev) => ({
-      ...prev,
-      [key]: cleaned,
-    }));
+    setForm((prev) => ({ ...prev, [key]: cleaned }));
   };
 
   const validateForm = (): string | null => {
@@ -133,23 +138,18 @@ export default function LotteryCheckPage() {
         await Swal.fire("ข้อมูลไม่ครบ", err, "warning");
         return;
       }
-
       setLoading(true);
-
       const token = getToken();
       if (!token) {
         await alertAndRedirectToLogin("ยังไม่ได้เข้าสู่ระบบ กรุณา login ก่อน");
         return;
       }
-
       if (isTokenExpired(token)) {
         await alertAndRedirectToLogin("Token หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่");
         return;
       }
-
       const res = await apiClient.saveAndCheckLottery(token, form);
       setResult(res.data);
-
       await Swal.fire(
         "สำเร็จ",
         "บันทึกผลหวยและตรวจผู้ถูกรางวัลแล้ว",
@@ -176,8 +176,12 @@ export default function LotteryCheckPage() {
     }));
   }, [result]);
 
-  const openDetail = (group: WinnerGroup): void => {
+  const openDetail = (
+    group: WinnerGroup,
+    filter: "all" | "1" | "2" = "all",
+  ): void => {
     setSelectedGroup(group);
+    setGroupFilter(filter);
     setDetailOpen(true);
   };
 
@@ -202,14 +206,12 @@ export default function LotteryCheckPage() {
                 />
               </svg>
             </div>
-
             <div>
               <h1 className="text-[26px] font-black text-slate-900">ตรวจหวย</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 บันทึกผลการออกรางวัล และตรวจผู้ถูกรางวัล
               </p>
-
-              {summaryBadges.length > 0 ? (
+              {summaryBadges.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {summaryBadges.map((item) => (
                     <span
@@ -220,10 +222,9 @@ export default function LotteryCheckPage() {
                     </span>
                   ))}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
-
           <Link
             href="/Home"
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
@@ -252,6 +253,7 @@ export default function LotteryCheckPage() {
         </div>
 
         <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-8 px-6 py-8 xl:grid-cols-[1fr_1fr]">
+          {/* form card */}
           <div className="overflow-hidden rounded-[30px] border border-slate-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between border-b px-6 py-5">
               <div className="flex items-center gap-4">
@@ -265,7 +267,6 @@ export default function LotteryCheckPage() {
                     />
                   </svg>
                 </div>
-
                 <div>
                   <h2 className="text-[22px] font-black text-emerald-800">
                     บันทึกผลหวย
@@ -275,12 +276,10 @@ export default function LotteryCheckPage() {
                   </p>
                 </div>
               </div>
-
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
                 RESULT
               </span>
             </div>
-
             <div className="p-6">
               <div className="space-y-5">
                 <FormRow
@@ -293,7 +292,6 @@ export default function LotteryCheckPage() {
                   value={form.three_top}
                   onChange={(v) => updateField("three_top", v)}
                 />
-                {/* ✅ เพิ่มตรงนี้ — แสดง 2 ตัวบน auto */}
                 <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[280px_1fr]">
                   <label className="text-right text-[18px] font-black text-slate-400">
                     สองตัวบน (auto)
@@ -337,7 +335,6 @@ export default function LotteryCheckPage() {
                   onChange={(v) => updateField("three_bottom_4", v)}
                 />
               </div>
-
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={() => void onSubmit()}
@@ -362,6 +359,7 @@ export default function LotteryCheckPage() {
             </div>
           </div>
 
+          {/* result card */}
           <div className="overflow-hidden rounded-[30px] border border-slate-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between border-b px-6 py-5">
               <div className="flex items-center gap-4">
@@ -375,74 +373,122 @@ export default function LotteryCheckPage() {
                     />
                   </svg>
                 </div>
-
                 <div>
                   <h2 className="text-[22px] font-black text-sky-800">
                     ผลการตรวจหวย
                   </h2>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    สรุปยอดผู้ถูกรางวัล พร้อมดูรายละเอียดรายคนใน modal
+                    กดปุ่มดูรายละเอียด หรือกรองตามกลุ่ม
                   </p>
                 </div>
               </div>
-
               <span className="rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-black text-sky-700">
                 SUMMARY
               </span>
             </div>
-
             <div className="p-6">
               <div className="overflow-x-auto rounded-[24px] border border-slate-200">
                 <table className="w-full border-separate border-spacing-0">
                   <thead>
                     <tr className="bg-slate-50">
-                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[18px] font-black text-slate-800">
-                        ประเภทหวย
+                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[16px] font-black text-slate-800">
+                        ประเภท
                       </th>
-                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[18px] font-black text-slate-800">
-                        ตัวเลข
-                      </th>
-                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[18px] font-black text-slate-800">
+                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[16px] font-black text-slate-800">
                         จำนวนเงิน
                       </th>
-                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[18px] font-black text-slate-800">
-                        ดูรายละเอียด
+                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[16px] font-black text-slate-800">
+                        ทั้งหมด
+                      </th>
+                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[16px] font-black text-amber-700">
+                        กลุ่ม 1
+                      </th>
+                      <th className="border-b border-slate-200 px-4 py-4 text-center text-[16px] font-black text-rose-700">
+                        กลุ่ม 2
                       </th>
                     </tr>
                   </thead>
-
                   <tbody>
                     {!result || result.summary.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="px-4 py-12 text-center text-slate-400"
                         >
                           ยังไม่มีผลการตรวจ
                         </td>
                       </tr>
                     ) : (
-                      result.summary.map((group) => (
-                        <tr key={group.bet_type}>
-                          <td className="border-b border-slate-200 px-4 py-4 text-center text-[18px] font-black text-slate-800">
-                            {group.bet_type}
-                          </td>
-                          <td className="border-b border-slate-200 px-4 py-4 text-center text-slate-400">
-                            -
-                          </td>
-                          <td className="border-b border-slate-200 px-4 py-4 text-center text-[20px] font-black text-slate-900">
-                            {formatMoney(group.total_amount)}
-                          </td>
-                          <td className="border-b border-slate-200 px-4 py-4 text-center">
-                            <button
-                              onClick={() => openDetail(group)}
-                              className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700 hover:bg-emerald-100"
-                            >
-                              {group.total_count} รายการ
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      result.summary.map((group) => {
+                        const rows1 = group.rows.filter(getGroupFilter("1"));
+                        const rows2 = group.rows.filter(getGroupFilter("2"));
+                        const amt1 = rows1.reduce(
+                          (s, r) => s + Number(r.amount || 0),
+                          0,
+                        );
+                        const amt2 = rows2.reduce(
+                          (s, r) => s + Number(r.amount || 0),
+                          0,
+                        );
+                        return (
+                          <tr key={group.bet_type}>
+                            <td className="border-b border-slate-200 px-4 py-4 text-center text-[17px] font-black text-slate-800">
+                              {group.bet_type}
+                            </td>
+                            <td className="border-b border-slate-200 px-4 py-4 text-center text-[18px] font-black text-slate-900">
+                              {formatMoney(group.total_amount)}
+                            </td>
+
+                            {/* ทั้งหมด */}
+                            <td className="border-b border-slate-200 px-4 py-4 text-center">
+                              <button
+                                onClick={() => openDetail(group, "all")}
+                                className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+                              >
+                                {group.total_count} ราย
+                              </button>
+                            </td>
+
+                            {/* กลุ่ม 1 */}
+                            <td className="border-b border-slate-200 px-4 py-4 text-center">
+                              {rows1.length > 0 ? (
+                                <button
+                                  onClick={() => openDetail(group, "1")}
+                                  className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-black text-amber-700 hover:bg-amber-100"
+                                >
+                                  {rows1.length} ราย
+                                  <span className="ml-1 text-xs font-semibold text-amber-500">
+                                    ({formatMoney(amt1)})
+                                  </span>
+                                </button>
+                              ) : (
+                                <span className="text-sm text-slate-300">
+                                  -
+                                </span>
+                              )}
+                            </td>
+
+                            {/* กลุ่ม 2 */}
+                            <td className="border-b border-slate-200 px-4 py-4 text-center">
+                              {rows2.length > 0 ? (
+                                <button
+                                  onClick={() => openDetail(group, "2")}
+                                  className="rounded-full bg-rose-50 px-3 py-1.5 text-sm font-black text-rose-700 hover:bg-rose-100"
+                                >
+                                  {rows2.length} ราย
+                                  <span className="ml-1 text-xs font-semibold text-rose-400">
+                                    ({formatMoney(amt2)})
+                                  </span>
+                                </button>
+                              ) : (
+                                <span className="text-sm text-slate-300">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -455,6 +501,7 @@ export default function LotteryCheckPage() {
       <WinnerDetailModal
         open={detailOpen}
         group={selectedGroup}
+        groupFilter={groupFilter}
         onClose={() => {
           setDetailOpen(false);
           setSelectedGroup(null);
@@ -464,21 +511,39 @@ export default function LotteryCheckPage() {
   );
 }
 
+// ── WinnerDetailModal ─────────────────────────────────────────────────────
+
 function WinnerDetailModal(props: {
   open: boolean;
   group: WinnerGroup | null;
+  groupFilter: "all" | "1" | "2";
   onClose: () => void;
 }) {
   if (!props.open || !props.group) return null;
 
-  const totalBet = props.group.rows.reduce(
-    (s, r) => s + Number(r.amount || 0),
-    0,
+  const filteredRows = props.group.rows.filter(
+    getGroupFilter(props.groupFilter),
   );
-  const totalPay = props.group.rows.reduce((s, r) => {
+
+  const totalBet = filteredRows.reduce((s, r) => s + Number(r.amount || 0), 0);
+  const totalPay = filteredRows.reduce((s, r) => {
     const rate = r.is_locked ? (r.lock_rate ?? 0.5) : 1;
     return s + Number(r.amount || 0) * rate;
   }, 0);
+
+  const filterLabel =
+    props.groupFilter === "1"
+      ? " — กลุ่ม 1 (ไม่อั้น)"
+      : props.groupFilter === "2"
+        ? " — กลุ่ม 2 (อั้น)"
+        : "";
+
+  const headerAccent =
+    props.groupFilter === "1"
+      ? "text-amber-700"
+      : props.groupFilter === "2"
+        ? "text-rose-700"
+        : "text-slate-900";
 
   return (
     <div className="fixed inset-0 z-50">
@@ -487,8 +552,8 @@ function WinnerDetailModal(props: {
         <div className="my-6 w-full max-w-5xl rounded-[28px] bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b px-6 py-5">
             <div>
-              <h3 className="text-[22px] font-black text-slate-900">
-                รายละเอียดผู้ถูกรางวัล
+              <h3 className={`text-[22px] font-black ${headerAccent}`}>
+                รายละเอียดผู้ถูกรางวัล{filterLabel}
               </h3>
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 {props.group.bet_type} • ซื้อรวม {formatMoney(totalBet)} บาท •
@@ -496,7 +561,7 @@ function WinnerDetailModal(props: {
                 <span className="font-black text-emerald-700">
                   {formatMoney(totalPay)} บาท
                 </span>{" "}
-                • {props.group.total_count} รายการ
+                • {filteredRows.length} รายการ
               </p>
             </div>
             <button
@@ -532,9 +597,8 @@ function WinnerDetailModal(props: {
                     </th>
                   </tr>
                 </thead>
-
                 <tbody>
-                  {props.group.rows.length === 0 ? (
+                  {filteredRows.length === 0 ? (
                     <tr>
                       <td
                         colSpan={6}
@@ -544,7 +608,7 @@ function WinnerDetailModal(props: {
                       </td>
                     </tr>
                   ) : (
-                    props.group.rows.map((row, idx) => {
+                    filteredRows.map((row, idx) => {
                       const rate = row.is_locked ? (row.lock_rate ?? 0.5) : 1;
                       const payAmt = row.amount * rate;
                       const locked = row.is_locked;
@@ -583,7 +647,6 @@ function WinnerDetailModal(props: {
                             };
                         }
                       };
-
                       const badge = betTypeBadge();
 
                       return (
@@ -591,19 +654,13 @@ function WinnerDetailModal(props: {
                           key={`${row.order_id}-${row.number}-${idx}`}
                           className={locked ? "bg-rose-50" : ""}
                         >
-                          {/* ประเภท */}
                           <td className="border-b border-slate-200 px-4 py-3 text-center">
                             <span
-                              className={[
-                                "inline-flex items-center rounded-full px-3 py-1 text-sm font-black border",
-                                badge.cls,
-                              ].join(" ")}
+                              className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-black ${badge.cls}`}
                             >
                               {badge.label}
                             </span>
                           </td>
-
-                          {/* เลข */}
                           <td className="border-b border-slate-200 px-4 py-3 text-center">
                             <div className="inline-flex items-center gap-2">
                               <span
@@ -618,29 +675,21 @@ function WinnerDetailModal(props: {
                               )}
                             </div>
                           </td>
-
-                          {/* ยอดซื้อ */}
                           <td
                             className={`border-b border-slate-200 px-4 py-3 text-center text-[18px] font-bold ${locked ? "text-rose-600" : "text-slate-800"}`}
                           >
                             {formatMoney(row.amount)}
                           </td>
-
-                          {/* ยอดจ่าย */}
                           <td
                             className={`border-b border-slate-200 px-4 py-3 text-center text-[18px] font-black ${locked ? "text-rose-700" : "text-emerald-700"}`}
                           >
                             {formatMoney(payAmt)}
                           </td>
-
-                          {/* ผู้ซื้อ */}
                           <td
                             className={`border-b border-slate-200 px-4 py-3 text-center text-[18px] font-semibold ${locked ? "text-rose-600" : "text-slate-700"}`}
                           >
                             {row.buyer_name}
                           </td>
-
-                          {/* เวลา */}
                           <td className="border-b border-slate-200 px-4 py-3 text-center text-[16px] font-medium text-slate-500">
                             {row.created_at}
                           </td>
@@ -649,7 +698,6 @@ function WinnerDetailModal(props: {
                     })
                   )}
                 </tbody>
-
                 <tfoot>
                   <tr className="bg-slate-50">
                     <td className="px-4 py-4 text-center text-[18px] font-black text-slate-900">
@@ -684,7 +732,6 @@ function FormRow(props: {
       <label className="text-right text-[18px] font-black text-slate-800">
         {props.label}
       </label>
-
       <div className="relative">
         <input
           value={props.value}

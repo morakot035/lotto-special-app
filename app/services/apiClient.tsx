@@ -139,6 +139,10 @@ export type TwoDigitSummaryRow = {
 export type TwoDigitSummaryResponse = {
   keep: TwoDigitSummaryRow[];
   send: TwoDigitSummaryRow[];
+  keep1: TwoDigitSummaryRow[];
+  send1: TwoDigitSummaryRow[];
+  keep2: TwoDigitSummaryRow[];
+  send2: TwoDigitSummaryRow[];
 };
 
 export type ThreeDigitSummaryRow = {
@@ -453,15 +457,18 @@ export const apiClient = {
   exportSummary2DExcel: async (
     token: string,
     mode: "keep" | "send" | "all" = "all",
+    group?: "1" | "2",
   ): Promise<void> => {
+    const groupParam = group ? `&group=${group}` : "";
+    const gSuffix = group ? `_g${group}` : "";
     const filename =
       mode === "keep"
-        ? "report_2d_kept.xlsx"
+        ? `report_2d_kept${gSuffix}.xlsx`
         : mode === "send"
-          ? "report_2d_sent.xlsx"
-          : "report_2d.xlsx";
+          ? `report_2d_sent${gSuffix}.xlsx`
+          : `report_2d${gSuffix}.xlsx`;
     await downloadBlob(
-      `${BASE_URL}/api/reports/summary/2d/export-excel?mode=${mode}`,
+      `${BASE_URL}/api/reports/summary/2d/export-excel?mode=${mode}${groupParam}`,
       token,
       filename,
     );
@@ -490,9 +497,11 @@ export const apiClient = {
   exportSummary2DPDF: async (
     token: string,
     mode: "keep" | "send" | "all" = "all",
+    group?: "1" | "2",
   ): Promise<void> => {
+    const groupParam = group ? `&group=${group}` : "";
     await openHtmlInNewTab(
-      `${BASE_URL}/api/reports/summary/2d/export-pdf?mode=${mode}`,
+      `${BASE_URL}/api/reports/summary/2d/export-pdf?mode=${mode}${groupParam}`,
       token,
     );
   },
