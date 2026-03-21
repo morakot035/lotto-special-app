@@ -620,7 +620,10 @@ export default function LottoPage() {
       return;
     }
 
-    if (lockedHits.length > 0) {
+    const buyerIsGroup1 = String(buyerName ?? "")
+      .trimEnd()
+      .endsWith("1");
+    if (!buyerIsGroup1 && lockedHits.length > 0) {
       toastError(
         `มีเลขอั้น: ${uniq(lockedHits).join(", ")} (จ่ายครึ่งตอนถูกรางวัล)`,
       );
@@ -629,7 +632,10 @@ export default function LottoPage() {
     const createdAt = new Date().toISOString();
     const mapped: Item[] = specialPreviewRows.rows.map((r) => {
       const rule = getRuleForNumber(r.number);
-      const isLocked = rule?.kind === "LOCK";
+      const buyerIsGroup1 = String(buyerName ?? "")
+        .trimEnd()
+        .endsWith("1");
+      const isLocked = !buyerIsGroup1 && rule?.kind === "LOCK";
       return {
         id: uid(),
         type: "special",
@@ -699,7 +705,10 @@ export default function LottoPage() {
       return;
     }
 
-    if (lockedHits.length > 0) {
+    const buyerIsGroup1 = String(buyerName ?? "")
+      .trimEnd()
+      .endsWith("1");
+    if (!buyerIsGroup1 && lockedHits.length > 0) {
       toastError(
         `มีเลขอั้น: ${uniq(lockedHits).join(", ")} (จ่ายครึ่งตอนถูกรางวัล)`,
       );
@@ -708,7 +717,10 @@ export default function LottoPage() {
     const createdAt = new Date().toISOString();
     const mapped: Item[] = rows.map((r) => {
       const rule = getRuleForNumber(r.number);
-      const isLocked = rule?.kind === "LOCK";
+      const buyerIsGroup1 = String(buyerName ?? "")
+        .trimEnd()
+        .endsWith("1");
+      const isLocked = !buyerIsGroup1 && rule?.kind === "LOCK";
       return {
         id: uid(),
         type: "quick",
