@@ -551,6 +551,46 @@ export default function LimitsPage() {
     }
   }
 
+  async function deleteAllRulesHandler(kind: RuleTab) {
+    const token = getToken();
+    if (!token) {
+      await alertAndRedirectToLogin();
+      return;
+    }
+    if (isTokenExpired(token)) {
+      await alertAndRedirectToLogin("Token หมดอายุแล้ว");
+      return;
+    }
+    const label = kind === "LOCK" ? "เลขอั้น 50%" : "เลขไม่รับซื้อ";
+    const result = await Swal.fire({
+      icon: "warning",
+      title: `ลบ${label}ทั้งหมด?`,
+      text: "การกระทำนี้ไม่สามารถกู้คืนได้",
+      showCancelButton: true,
+      confirmButtonText: "ลบทั้งหมด",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#e11d48",
+      reverseButtons: true,
+    });
+    if (!result.isConfirmed) return;
+    try {
+      showLoading();
+      await apiClient.deleteAllRules(token, kind);
+      await Swal.fire({
+        icon: "success",
+        title: "ลบทั้งหมดแล้ว",
+        timer: 800,
+        showConfirmButton: false,
+      });
+      await loadRules();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
+      await Swal.fire({ icon: "error", title: "ลบไม่สำเร็จ", text: msg });
+    } finally {
+      hideLoading();
+    }
+  }
+
   /** UI: counts */
   const lockBadge = (
     <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-extrabold border bg-yellow-50 text-yellow-900 border-yellow-200">
@@ -757,6 +797,14 @@ export default function LimitsPage() {
                   className="px-4"
                 >
                   รีเฟรช
+                </UiButton>
+                <UiButton
+                  variant="outline"
+                  tone="rose"
+                  onClick={() => deleteAllRulesHandler(tab)}
+                  className="px-4"
+                >
+                  ลบทั้งหมด
                 </UiButton>
               </div>
             </div>

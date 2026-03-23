@@ -409,6 +409,16 @@ export const apiClient = {
   updateRule: (token: string, id: string, payload: { active: boolean }) =>
     apiRequest<ApiResponse<Rule>>(`/api/rules/${id}`, "PUT", payload, token),
 
+  deleteAllRules: (token: string, kind?: "LOCK" | "BLOCK") => {
+    const qs = kind ? `?kind=${kind}` : "";
+    return apiRequest<ApiResponse<{ deletedCount: number }>>(
+      `/api/rules/delete-all${qs}`,
+      "DELETE",
+      undefined,
+      token,
+    );
+  },
+
   deleteRule: (token: string, id: string) =>
     apiRequest<ApiResponse<null>>(
       `/api/rules/${id}`,
