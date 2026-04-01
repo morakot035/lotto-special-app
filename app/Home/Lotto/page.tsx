@@ -1238,11 +1238,14 @@ export default function LottoPage() {
                       <th className="p-3 border-b text-right whitespace-nowrap font-extrabold">
                         จำนวนเงิน
                       </th>
-                      <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
+                      {/* <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
                         วัน/เวลา
-                      </th>
+                      </th> */}
                       <th className="p-3 border-b text-left whitespace-nowrap font-extrabold">
                         ผู้ซื้อ
+                      </th>
+                      <th className="p-3 border-b text-center whitespace-nowrap font-extrabold">
+                        ลบ
                       </th>
                     </tr>
                   </thead>
@@ -1288,11 +1291,37 @@ export default function LottoPage() {
                           <td className="p-3 border-b text-right font-extrabold text-slate-900">
                             {cn(i.amount)}
                           </td>
-                          <td className="p-3 border-b text-slate-800 whitespace-nowrap font-semibold">
+                          {/* <td className="p-3 border-b text-slate-800 whitespace-nowrap font-semibold">
                             {formatDateTimeTH(i.createdAt)}
-                          </td>
+                          </td> */}
                           <td className="p-3 border-b text-slate-900 font-bold">
                             {i.buyerName ?? "-"}
+                          </td>
+                          <td className="p-3 border-b text-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setItems((prev) =>
+                                  prev.filter((x) => x.id !== i.id),
+                                )
+                              }
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
+                              title="ลบรายการนี้"
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                              >
+                                <path
+                                  d="M18 6 6 18M6 6l12 12"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            </button>
                           </td>
                         </tr>
                       ))
