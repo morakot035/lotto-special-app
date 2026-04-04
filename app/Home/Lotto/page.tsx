@@ -1300,11 +1300,23 @@ export default function LottoPage() {
                           <td className="p-3 border-b text-center">
                             <button
                               type="button"
-                              onClick={() =>
-                                setItems((prev) =>
-                                  prev.filter((x) => x.id !== i.id),
-                                )
-                              }
+                              onClick={async () => {
+                                const result = await Swal.fire({
+                                  icon: "warning",
+                                  title: "ลบรายการนี้?",
+                                  html: `<div style="text-align:left"><b>${i.label}</b> เลข <b>${i.numbers.join(", ")}</b><br/>จำนวน <b>${i.amount.toLocaleString()}</b> บาท</div>`,
+                                  showCancelButton: true,
+                                  confirmButtonText: "ลบ",
+                                  cancelButtonText: "ยกเลิก",
+                                  confirmButtonColor: "#e11d48",
+                                  reverseButtons: true,
+                                });
+                                if (result.isConfirmed) {
+                                  setItems((prev) =>
+                                    prev.filter((x) => x.id !== i.id),
+                                  );
+                                }
+                              }}
                               className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
                               title="ลบรายการนี้"
                             >
