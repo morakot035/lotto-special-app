@@ -107,6 +107,13 @@ const menu: MenuItem[] = [
     bg: "bg-fuchsia-100",
   },
   {
+    title: "สรุปเลขอั้น",
+    href: "/Home/Reports/limit",
+    icon: CheckCircle,
+    color: "text-blue-600",
+    bg: "bg-blue-100",
+  },
+  {
     title: "ล้างข้อมูลหวย",
     href: "/Home/backup",
     icon: Database,

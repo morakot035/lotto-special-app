@@ -16,7 +16,7 @@ const BET_TYPE_OPTIONS = [
   "สามตัวโต๊ด",
 ];
 
-const PAGE_SIZE_OPTIONS = [50, 100, 200];
+const PAGE_SIZE_OPTIONS = [50, 100, 200, 500, 1000, 5000];
 
 function formatMoney(n: number): string {
   return Number(n || 0).toLocaleString("th-TH", {

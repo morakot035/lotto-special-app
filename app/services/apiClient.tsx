@@ -293,6 +293,33 @@ export type LotteryCheckDetailRow = {
   created_at: string;
 };
 
+export type Limit2DRow = {
+  number: string;
+  two_top: number;
+  two_bottom: number;
+  is_locked?: boolean;
+};
+
+export type Limit3DRow = {
+  number: string;
+  three_top: number;
+  three_bottom: number;
+  three_tod: number;
+  is_locked?: boolean;
+};
+
+export type LimitSummaryResponse = {
+  two: {
+    keep: Limit2DRow[];
+    send: Limit2DRow[];
+  };
+
+  three: {
+    keep: Limit3DRow[];
+    send: Limit3DRow[];
+  };
+};
+
 // ── helper: fetch HTML จาก server แล้วเปิดใน tab ใหม่ (รองรับ tablet) ────
 // ส่ง Authorization header ได้ปกติ → ไม่ต้องใช้ query token
 async function openHtmlInNewTab(url: string, token: string): Promise<void> {
@@ -648,6 +675,14 @@ export const apiClient = {
       "/api/lottery-results/check",
       "POST",
       payload,
+      token,
+    ),
+
+  getLimitSummaryReport: (token: string) =>
+    apiRequest<SuccessResponse<LimitSummaryResponse>>(
+      "/api/limit-report/summary",
+      "GET",
+      undefined,
       token,
     ),
 };
