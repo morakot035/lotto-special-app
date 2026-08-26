@@ -114,6 +114,56 @@ export default function LimitReportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function handlePDF(
+    digits: "2" | "3",
+    mode: "keep" | "send",
+  ): Promise<void> {
+    try {
+      const token = getToken();
+
+      if (!token) {
+        throw new Error("Token not found");
+      }
+
+      if (digits === "2") {
+        await apiClient.exportLimit2DPDF(token, mode);
+      } else {
+        await apiClient.exportLimit3DPDF(token, mode);
+      }
+    } catch (error) {
+      await Swal.fire(
+        "ผิดพลาด",
+        error instanceof Error ? error.message : String(error),
+        "error",
+      );
+    }
+  }
+
+  async function handleExcel(
+    digits: "2" | "3",
+    mode: "keep" | "send",
+  ): Promise<void> {
+    try {
+      const token = getToken();
+
+      if (!token) {
+        throw new Error("Token not found");
+      }
+
+      if (digits === "2") {
+        await apiClient.exportLimit2DExcel(token, mode);
+      } else {
+        await apiClient.exportLimit3DExcel(token, mode);
+      }
+    } catch (error) {
+      await Swal.fire(
+        "ผิดพลาด",
+        error instanceof Error ? error.message : String(error),
+        "error",
+      );
+    }
+  }
+
   // ======================================================
   // TOTAL : เลขอั้น 2 ตัว
   // ======================================================
@@ -332,6 +382,8 @@ export default function LimitReportPage() {
                 iconBg="bg-emerald-50"
                 iconColor="text-emerald-700"
                 rows={data.two.keep}
+                onPDF={() => handlePDF("2", "keep")}
+                onExcel={() => handleExcel("2", "keep")}
               />
 
               {/* =================== */}
@@ -347,6 +399,8 @@ export default function LimitReportPage() {
                 iconBg="bg-sky-50"
                 iconColor="text-sky-700"
                 rows={data.two.send}
+                onPDF={() => handlePDF("2", "send")}
+                onExcel={() => handleExcel("2", "send")}
               />
             </>
           ) : (
@@ -364,8 +418,9 @@ export default function LimitReportPage() {
                 iconBg="bg-emerald-50"
                 iconColor="text-emerald-700"
                 rows={data.three.keep}
+                onPDF={() => handlePDF("3", "keep")}
+                onExcel={() => handleExcel("3", "keep")}
               />
-
               {/* =================== */}
               {/* 3D SENT */}
               {/* =================== */}
@@ -379,6 +434,8 @@ export default function LimitReportPage() {
                 iconBg="bg-sky-50"
                 iconColor="text-sky-700"
                 rows={data.three.send}
+                onPDF={() => handlePDF("3", "send")}
+                onExcel={() => handleExcel("3", "send")}
               />
             </>
           )}
@@ -404,6 +461,8 @@ function SummaryCard2D(props: {
   iconColor: string;
 
   rows: Limit2DRow[];
+  onPDF: () => void;
+  onExcel: () => void;
 }) {
   const totalTop = props.rows.reduce((s, r) => s + Number(r.two_top || 0), 0);
 
@@ -450,6 +509,24 @@ function SummaryCard2D(props: {
       </div>
 
       {/* table */}
+
+      <div className="flex items-center gap-2 border-b bg-slate-50 px-6 py-3">
+        <button
+          type="button"
+          onClick={props.onPDF}
+          className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-black text-rose-700 hover:bg-rose-50"
+        >
+          🖨️ PDF
+        </button>
+
+        <button
+          type="button"
+          onClick={props.onExcel}
+          className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+        >
+          📊 Excel
+        </button>
+      </div>
 
       <div className="p-6">
         <div className="overflow-x-auto rounded-[24px] border border-slate-200">
@@ -537,6 +614,8 @@ function SummaryCard3D(props: {
   iconColor: string;
 
   rows: Limit3DRow[];
+  onPDF: () => void;
+  onExcel: () => void;
 }) {
   const totalTop = props.rows.reduce((s, r) => s + Number(r.three_top || 0), 0);
 
@@ -585,6 +664,24 @@ function SummaryCard3D(props: {
       </div>
 
       {/* table */}
+
+      <div className="flex items-center gap-2 border-b bg-slate-50 px-6 py-3">
+        <button
+          type="button"
+          onClick={props.onPDF}
+          className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-black text-rose-700 hover:bg-rose-50"
+        >
+          🖨️ PDF
+        </button>
+
+        <button
+          type="button"
+          onClick={props.onExcel}
+          className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+        >
+          📊 Excel
+        </button>
+      </div>
 
       <div className="p-6">
         <div className="overflow-x-auto rounded-[24px] border border-slate-200">

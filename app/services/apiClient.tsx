@@ -685,4 +685,60 @@ export const apiClient = {
       undefined,
       token,
     ),
+
+  exportLimit2DExcel: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    const filename =
+      mode === "keep"
+        ? "locked_2d_kept.xlsx"
+        : mode === "send"
+          ? "locked_2d_sent.xlsx"
+          : "locked_2d.xlsx";
+
+    await downloadBlob(
+      `${BASE_URL}/api/limit-report/summary/export-excel?digits=2&mode=${mode}`,
+      token,
+      filename,
+    );
+  },
+
+  exportLimit3DExcel: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    const filename =
+      mode === "keep"
+        ? "locked_3d_kept.xlsx"
+        : mode === "send"
+          ? "locked_3d_sent.xlsx"
+          : "locked_3d.xlsx";
+
+    await downloadBlob(
+      `${BASE_URL}/api/limit-report/summary/export-excel?digits=3&mode=${mode}`,
+      token,
+      filename,
+    );
+  },
+
+  exportLimit2DPDF: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    await openHtmlInNewTab(
+      `${BASE_URL}/api/limit-report/summary/export-pdf?digits=2&mode=${mode}`,
+      token,
+    );
+  },
+
+  exportLimit3DPDF: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    await openHtmlInNewTab(
+      `${BASE_URL}/api/limit-report/summary/export-pdf?digits=3&mode=${mode}`,
+      token,
+    );
+  },
 };
