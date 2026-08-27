@@ -320,6 +320,76 @@ export type LimitSummaryResponse = {
   };
 };
 
+export type NumberAnalysis2DRow = {
+  number: string;
+
+  is_locked: boolean;
+
+  status: "อั้น" | "ไม่อั้น";
+
+  two_top: number;
+
+  two_bottom: number;
+
+  total_amount: number;
+
+  buyer_count: number;
+
+  purchase_count: number;
+};
+
+export type NumberAnalysis3DRow = {
+  number: string;
+
+  is_locked: boolean;
+
+  status: "อั้น" | "ไม่อั้น";
+
+  three_top: number;
+
+  three_bottom: number;
+
+  three_tod: number;
+
+  total_amount: number;
+
+  buyer_count: number;
+
+  purchase_count: number;
+};
+
+export type NumberAnalysisSummary = {
+  total_amount: number;
+  number_count: number;
+  purchase_count: number;
+};
+
+export type NumberAnalysisResponse = {
+  two: {
+    rows: NumberAnalysis2DRow[];
+
+    summary: {
+      locked: NumberAnalysisSummary;
+
+      normal: NumberAnalysisSummary;
+
+      overall: NumberAnalysisSummary;
+    };
+  };
+
+  three: {
+    rows: NumberAnalysis3DRow[];
+
+    summary: {
+      locked: NumberAnalysisSummary;
+
+      normal: NumberAnalysisSummary;
+
+      overall: NumberAnalysisSummary;
+    };
+  };
+};
+
 // ── helper: fetch HTML จาก server แล้วเปิดใน tab ใหม่ (รองรับ tablet) ────
 // ส่ง Authorization header ได้ปกติ → ไม่ต้องใช้ query token
 async function openHtmlInNewTab(url: string, token: string): Promise<void> {
@@ -738,6 +808,144 @@ export const apiClient = {
   ): Promise<void> => {
     await openHtmlInNewTab(
       `${BASE_URL}/api/limit-report/summary/export-pdf?digits=3&mode=${mode}`,
+      token,
+    );
+  },
+
+  // ============================================================================
+  // REPORT : ไม่รวมเลขอั้น
+  // ============================================================================
+
+  // ---------------------------------------------------------------------------
+  // GET 2 ตัว ไม่รวมเลขอั้น
+  // ---------------------------------------------------------------------------
+
+  getTwoDigitNoLimitSummaryReport: (token: string) =>
+    apiRequest<
+      SuccessResponse<{
+        keep: TwoDigitSummaryRow[];
+        send: TwoDigitSummaryRow[];
+      }>
+    >("/api/reports/summary/2d-no-limit", "GET", undefined, token),
+
+  // ---------------------------------------------------------------------------
+  // GET 3 ตัว ไม่รวมเลขอั้น
+  // ---------------------------------------------------------------------------
+
+  getThreeDigitNoLimitSummaryReport: (token: string) =>
+    apiRequest<
+      SuccessResponse<{
+        keep: ThreeDigitSummaryRow[];
+        send: ThreeDigitSummaryRow[];
+      }>
+    >("/api/reports/summary/3d-no-limit", "GET", undefined, token),
+
+  // ============================================================================
+  // EXCEL
+  // ============================================================================
+
+  exportSummary2DNoLimitExcel: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    const filename =
+      mode === "keep"
+        ? "report_2d_no_limit_kept.xlsx"
+        : mode === "send"
+          ? "report_2d_no_limit_sent.xlsx"
+          : "report_2d_no_limit.xlsx";
+
+    await downloadBlob(
+      `${BASE_URL}/api/reports/summary/2d-no-limit/export-excel?mode=${mode}`,
+      token,
+      filename,
+    );
+  },
+
+  exportSummary3DNoLimitExcel: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    const filename =
+      mode === "keep"
+        ? "report_3d_no_limit_kept.xlsx"
+        : mode === "send"
+          ? "report_3d_no_limit_sent.xlsx"
+          : "report_3d_no_limit.xlsx";
+
+    await downloadBlob(
+      `${BASE_URL}/api/reports/summary/3d-no-limit/export-excel?mode=${mode}`,
+      token,
+      filename,
+    );
+  },
+
+  // ============================================================================
+  // PDF
+  // ============================================================================
+
+  exportSummary2DNoLimitPDF: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    await openHtmlInNewTab(
+      `${BASE_URL}/api/reports/summary/2d-no-limit/export-pdf?mode=${mode}`,
+      token,
+    );
+  },
+
+  exportSummary3DNoLimitPDF: async (
+    token: string,
+    mode: "keep" | "send" | "all" = "all",
+  ): Promise<void> => {
+    await openHtmlInNewTab(
+      `${BASE_URL}/api/reports/summary/3d-no-limit/export-pdf?mode=${mode}`,
+      token,
+    );
+  },
+
+  // ============================================================================
+  // NUMBER ANALYSIS
+  // ============================================================================
+
+  getNumberAnalysisReport: (token: string) =>
+    apiRequest<SuccessResponse<NumberAnalysisResponse>>(
+      "/api/number-analysis",
+      "GET",
+      undefined,
+      token,
+    ),
+
+  // ============================================================================
+  // EXCEL
+  // ============================================================================
+
+  exportNumberAnalysisExcel: async (
+    token: string,
+
+    digits: "2" | "3",
+  ): Promise<void> => {
+    const filename =
+      digits === "2" ? "number_analysis_2d.xlsx" : "number_analysis_3d.xlsx";
+
+    await downloadBlob(
+      `${BASE_URL}/api/number-analysis/export-excel?digits=${digits}`,
+      token,
+      filename,
+    );
+  },
+
+  // ============================================================================
+  // PDF
+  // ============================================================================
+
+  exportNumberAnalysisPDF: async (
+    token: string,
+
+    digits: "2" | "3",
+  ): Promise<void> => {
+    await openHtmlInNewTab(
+      `${BASE_URL}/api/number-analysis/export-pdf?digits=${digits}`,
       token,
     );
   },

@@ -114,6 +114,20 @@ const menu: MenuItem[] = [
     bg: "bg-blue-100",
   },
   {
+    title: "สรุปเลข2ตัว3ตัว",
+    href: "/Home/Reports/no-limit",
+    icon: Hash,
+    color: "text-blue-600",
+    bg: "bg-blue-100",
+  },
+  {
+    title: "สรุปวิเคราะห์ยอดซื้อ",
+    href: "/Home/Reports/number-analysis",
+    icon: Hash,
+    color: "text-cyan-600",
+    bg: "bg-cyan-100",
+  },
+  {
     title: "ล้างข้อมูลหวย",
     href: "/Home/backup",
     icon: Database,
